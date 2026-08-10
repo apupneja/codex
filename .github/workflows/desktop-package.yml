@@ -1,0 +1,87 @@
+name: desktop-package
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  package-smoke:
+    name: Package smoke — ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - name: macOS arm64
+            runner: macos-15-xlarge
+            target: aarch64-apple-darwin
+          - name: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-ci
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@e081816240890017053eacbb1bdf337761dc5582 # 1.95.0
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux packaging and display dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            musl-tools \
+            xauth \
+            xvfb
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288 # v5
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build unpacked desktop application
+        env:
+          CODEX_DESKTOP_TARGET: ${{ matrix.target }}
+        run: pnpm --dir desktop-app package:dir
+
+      - name: Smoke-test packaged application (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum pnpm --dir desktop-app smoke:packaged
+
+      - name: Smoke-test packaged application
+        if: runner.os != 'Linux'
+        run: pnpm --dir desktop-app smoke:packaged
+
+      - name: Upload packaged smoke capture
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: desktop-packaged-smoke-${{ matrix.target }}
+          path: desktop-app/artifacts/packaged-smoke.png
+          if-no-files-found: error
+
+      - name: Check for a clean worktree
+        if: always() && !cancelled()
+        uses: ./.github/actions/check-clean-worktree
