@@ -424,8 +424,8 @@ async fn enqueue_primary_thread_session_replays_turns_before_initial_prompt_subm
             Vec::new(),
         ),
         enhanced_keys_supported: false,
-        has_chatgpt_account: false,
-        has_codex_backend_auth: false,
+        has_hosted_provider_account: false,
+        has_hosted_provider_auth: false,
         model_catalog: app.model_catalog.clone(),
         feedback: codex_feedback::CodexFeedback::new(),
         is_first_run: false,
@@ -4819,7 +4819,6 @@ async fn make_test_app() -> App {
         feedback_audience: FeedbackAudience::External,
         environment_manager: Arc::new(EnvironmentManager::default_for_tests()),
         app_server_target: crate::AppServerTarget::Embedded,
-        pending_update_action: None,
         pending_shutdown_exit_thread_id: None,
         windows_sandbox: WindowsSandboxState::default(),
         thread_event_channels: HashMap::new(),
@@ -4889,7 +4888,6 @@ async fn make_test_app_with_channels() -> (
             feedback_audience: FeedbackAudience::External,
             environment_manager: Arc::new(EnvironmentManager::default_for_tests()),
             app_server_target: crate::AppServerTarget::Embedded,
-            pending_update_action: None,
             pending_shutdown_exit_thread_id: None,
             windows_sandbox: WindowsSandboxState::default(),
             thread_event_channels: HashMap::new(),
@@ -5730,7 +5728,7 @@ async fn feedback_submission_for_inactive_thread_replays_into_origin_thread() {
         }
     }
     assert!(rendered_cells.iter().any(|cell| {
-        cell.contains("• Feedback uploaded. Please open an issue using the following URL:")
+        cell.contains("• Feedback uploaded. Thanks for the feedback!")
             && cell.contains("uploaded-thread")
     }));
 }
@@ -5810,13 +5808,16 @@ fn session_start_error_surfaces_archived_guidance_without_rollout_path() {
         )),
         thread_id,
     };
-    let expected = format!(
+    let legacy_message = format!(
         "session {thread_id} is archived. Run `codex unarchive {thread_id}` to unarchive it first."
+    );
+    let expected = format!(
+        "session {thread_id} is archived. Run `redapto unarchive {thread_id}` to unarchive it first."
     );
 
     for action in ["resume", "fork"] {
         let err = color_eyre::eyre::eyre!(
-            "thread/{action} failed during TUI bootstrap: thread/{action} failed: {expected} (code -32600)"
+            "thread/{action} failed during TUI bootstrap: thread/{action} failed: {legacy_message} (code -32600)"
         );
 
         assert_eq!(
@@ -6876,8 +6877,8 @@ async fn replace_chat_widget_reseeds_collab_agent_metadata_for_replay() {
         workspace_command_runner: None,
         initial_user_message: None,
         enhanced_keys_supported: app.enhanced_keys_supported,
-        has_chatgpt_account: app.chat_widget.has_chatgpt_account(),
-        has_codex_backend_auth: app.chat_widget.has_codex_backend_auth(),
+        has_hosted_provider_account: app.chat_widget.has_hosted_provider_account(),
+        has_hosted_provider_auth: app.chat_widget.has_hosted_provider_auth(),
         model_catalog: app.model_catalog.clone(),
         feedback: app.feedback.clone(),
         is_first_run: false,

@@ -31,7 +31,6 @@ use codex_app_server_client::InProcessClientStartArgs;
 use codex_app_server_client::RemoteAppServerClient;
 use codex_app_server_client::RemoteAppServerConnectArgs;
 pub use codex_app_server_client::RemoteAppServerEndpoint;
-use codex_app_server_protocol::Account as AppServerAccount;
 use codex_app_server_protocol::AskForApproval;
 use codex_app_server_protocol::ConfigWarningNotification;
 use codex_app_server_protocol::Thread as AppServerThread;
@@ -50,9 +49,7 @@ use codex_exec_server::ExecServerRuntimePaths;
 use codex_login::AuthConfig;
 use codex_login::default_client::originator;
 use codex_login::default_client::set_default_client_residency_requirement;
-use codex_login::enforce_login_restrictions;
 use codex_protocol::ThreadId;
-use codex_protocol::auth::AuthMode;
 use codex_protocol::config_types::AltScreenMode;
 use codex_protocol::config_types::SandboxMode;
 #[cfg(target_os = "windows")]
@@ -138,7 +135,6 @@ mod keymap_setup;
 mod line_truncation;
 pub(crate) mod live_wrap;
 pub use live_wrap::RowBuilder;
-mod local_chatgpt_auth;
 mod managed_new_thread_defaults;
 mod markdown;
 mod markdown_render;
@@ -151,8 +147,6 @@ mod motion;
 mod multi_agents;
 mod named_session_lookup;
 mod notifications;
-#[cfg(any(not(debug_assertions), test))]
-mod npm_registry;
 pub(crate) mod onboarding;
 mod oss_selection;
 mod pager_overlay;
@@ -189,16 +183,6 @@ mod tooltips;
 mod transcript_reflow;
 mod tui;
 mod ui_consts;
-pub(crate) mod update_action;
-pub use update_action::UpdateAction;
-#[cfg(not(debug_assertions))]
-pub use update_action::get_update_action;
-mod update_prompt;
-#[cfg(any(not(debug_assertions), test))]
-mod update_versions;
-mod updates;
-#[cfg(any(not(debug_assertions), test))]
-mod updates_cache;
 mod version;
 mod width;
 #[cfg(any(target_os = "windows", test))]
@@ -227,7 +211,7 @@ pub use public_widgets::composer_input::ComposerAction;
 pub use public_widgets::composer_input::ComposerInput;
 // (tests access modules directly within the crate)
 
-const TUI_LOG_FILE_NAME: &str = "codex-tui.log";
+const TUI_LOG_FILE_NAME: &str = "redapto-tui.log";
 const INTERACTIVE_OTEL_SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(/*millis*/ 500);
 
 #[cfg(unix)]
@@ -363,7 +347,7 @@ fn websocket_url_supports_auth_token(parsed: &Url) -> bool {
 pub fn resolve_remote_addr(addr: &str) -> color_eyre::Result<RemoteAppServerEndpoint> {
     if let Some(socket_path) = addr.strip_prefix("unix://") {
         let socket_path = if socket_path.is_empty() {
-            let codex_home = find_codex_home().wrap_err("failed to resolve CODEX_HOME")?;
+            let codex_home = find_codex_home().wrap_err("failed to resolve Redapto home")?;
             codex_app_server_client::app_server_control_socket_path(&codex_home)
                 .map_err(color_eyre::Report::new)?
         } else {
@@ -928,7 +912,7 @@ pub async fn run_main(
     let codex_home = match find_codex_home() {
         Ok(codex_home) => codex_home.to_path_buf(),
         Err(err) => {
-            eprintln!("Error finding codex home: {err}");
+            eprintln!("Error finding Redapto data home: {err}");
             std::process::exit(1);
         }
     };
@@ -1161,14 +1145,6 @@ pub async fn run_main(
         }
     }
 
-    if !app_server_target.uses_remote_workspace() {
-        #[allow(clippy::print_stderr)]
-        if let Err(err) = enforce_login_restrictions(&config.auth_config()).await {
-            eprintln!("{err}");
-            std::process::exit(1);
-        }
-    }
-
     let (tui_file_layer, _tui_file_log_guard) = if config_toml_log_dir_configured {
         let log_dir = config.log_dir.clone();
         std::fs::create_dir_all(&log_dir)?;
@@ -1283,7 +1259,7 @@ async fn run_ratatui_app(
     manually_selected_oss_provider: Option<String>,
     overrides: ConfigOverrides,
     cli_kv_overrides: Vec<(String, toml::Value)>,
-    mut cloud_config_bundle: CloudConfigBundleLoader,
+    cloud_config_bundle: CloudConfigBundleLoader,
     feedback: codex_feedback::CodexFeedback,
     log_db: Option<log_db::LogDbLayer>,
     state_db: Option<StateDbHandle>,
@@ -1291,8 +1267,6 @@ async fn run_ratatui_app(
 ) -> color_eyre::Result<AppExitInfo> {
     let uses_remote_workspace = app_server_target.uses_remote_workspace();
     color_eyre::install()?;
-
-    tooltips::announcement::prewarm(initial_config.http_client_factory());
 
     // Forward panic reports through tracing so they appear in the UI status
     // line, but do not swallow the default/color-eyre panic handler.
@@ -1312,28 +1286,6 @@ async fn run_ratatui_app(
         initialized_terminal.stderr_guard,
     );
     let mut terminal_restore_guard = TerminalRestoreGuard::new();
-
-    #[cfg(not(debug_assertions))]
-    {
-        use crate::update_prompt::UpdatePromptOutcome;
-
-        let skip_update_prompt = cli.prompt.as_ref().is_some_and(|prompt| !prompt.is_empty());
-        if !skip_update_prompt {
-            match update_prompt::run_update_prompt_if_needed(&mut tui, &initial_config).await? {
-                UpdatePromptOutcome::Continue => {}
-                UpdatePromptOutcome::RunUpdate(action) => {
-                    terminal_restore_guard.restore()?;
-                    return Ok(AppExitInfo {
-                        token_usage: crate::token_usage::TokenUsage::default(),
-                        thread_id: None,
-                        resume_hint: None,
-                        update_action: Some(action),
-                        exit_reason: ExitReason::UserRequested,
-                    });
-                }
-            }
-        }
-    }
 
     // Initialize high-fidelity session event logging if enabled.
     session_log::maybe_init(&initial_config);
@@ -1380,33 +1332,16 @@ async fn run_ratatui_app(
         !uses_remote_workspace && should_show_trust_screen(&initial_config);
     #[cfg(target_os = "windows")]
     let mut trust_decision_was_made = false;
-    let login_status = if initial_config.model_provider.requires_openai_auth {
-        let Some(app_server) = app_server.as_mut() else {
-            unreachable!("app server should exist when auth is required");
-        };
-        get_login_status(app_server, &initial_config).await?
-    } else {
-        LoginStatus::NotAuthenticated
-    };
-    let should_show_onboarding =
-        should_show_onboarding(login_status, &initial_config, should_show_trust_screen_flag);
+    let should_show_onboarding = should_show_trust_screen_flag;
 
     let config = if should_show_onboarding {
-        let show_login_screen = should_show_login_screen(login_status, &initial_config);
         let onboarding_result = run_onboarding_app(
             OnboardingScreenArgs {
-                show_login_screen,
                 show_trust_screen: should_show_trust_screen_flag,
-                login_status,
                 app_server_request_handle: app_server
                     .as_ref()
                     .map(AppServerSession::request_handle),
                 config: initial_config.clone(),
-            },
-            if show_login_screen {
-                app_server.as_mut()
-            } else {
-                None
             },
             &mut tui,
         )
@@ -1420,7 +1355,6 @@ async fn run_ratatui_app(
                 token_usage: crate::token_usage::TokenUsage::default(),
                 thread_id: None,
                 resume_hint: None,
-                update_action: None,
                 exit_reason: ExitReason::UserRequested,
             });
         }
@@ -1428,22 +1362,7 @@ async fn run_ratatui_app(
         {
             trust_decision_was_made = onboarding_result.directory_trust_persisted;
         }
-        // If this onboarding run included the login step, always refresh the cloud config bundle
-        // and rebuild config. This avoids missing newly available cloud-managed policy due to login
-        // status detection edge cases.
-        if show_login_screen && !uses_remote_workspace {
-            cloud_config_bundle = cloud_config_bundle_loader_for_storage(
-                initial_config.auth_config(),
-                /*enable_codex_api_key_env*/ false,
-            )
-            .await;
-        }
-
-        // If the user made an explicit trust decision, or we showed the login flow, reload config
-        // so current process state reflects persisted trust/auth changes.
-        if onboarding_result.directory_trust_persisted
-            || (show_login_screen && !uses_remote_workspace)
-        {
+        if onboarding_result.directory_trust_persisted {
             load_config_or_exit(
                 cli_kv_overrides.clone(),
                 overrides.clone(),
@@ -1468,9 +1387,8 @@ async fn run_ratatui_app(
             token_usage: crate::token_usage::TokenUsage::default(),
             thread_id: None,
             resume_hint: None,
-            update_action: None,
             exit_reason: ExitReason::Fatal(format!(
-                "No saved session found with ID {id_str}. Run `codex {action}` without an ID to choose from existing sessions."
+                "No saved session found with ID {id_str}. Run `redapto {action}` without an ID to choose from existing sessions."
             )),
         })
     };
@@ -1526,7 +1444,6 @@ async fn run_ratatui_app(
                         token_usage: crate::token_usage::TokenUsage::default(),
                         thread_id: None,
                         resume_hint: None,
-                        update_action: None,
                         exit_reason: ExitReason::UserRequested,
                     });
                 }
@@ -1587,7 +1504,6 @@ async fn run_ratatui_app(
                     token_usage: crate::token_usage::TokenUsage::default(),
                     thread_id: None,
                     resume_hint: None,
-                    update_action: None,
                     exit_reason: ExitReason::UserRequested,
                 });
             }
@@ -1617,7 +1533,6 @@ async fn run_ratatui_app(
                 token_usage: crate::token_usage::TokenUsage::default(),
                 thread_id: None,
                 resume_hint: None,
-                update_action: None,
                 exit_reason: ExitReason::UserRequested,
             });
         }
@@ -1848,32 +1763,6 @@ fn determine_alt_screen_mode(no_alt_screen: bool, tui_alternate_screen: AltScree
     tui_alternate_screen != AltScreenMode::Never
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LoginStatus {
-    AuthMode(AuthMode),
-    NotAuthenticated,
-}
-
-/// Determines the user's authentication mode using a lightweight account read
-/// rather than a full `bootstrap`, avoiding the model-list fetch and
-/// rate-limit round-trip that `bootstrap` would trigger.
-async fn get_login_status(
-    app_server: &mut AppServerSession,
-    config: &Config,
-) -> color_eyre::Result<LoginStatus> {
-    if !config.model_provider.requires_openai_auth {
-        return Ok(LoginStatus::NotAuthenticated);
-    }
-
-    let account = app_server.read_account().await?;
-    Ok(match account.account {
-        Some(AppServerAccount::ApiKey {}) => LoginStatus::AuthMode(AuthMode::ApiKey),
-        Some(AppServerAccount::Chatgpt { .. }) => LoginStatus::AuthMode(AuthMode::Chatgpt),
-        Some(AppServerAccount::AmazonBedrock { .. }) => LoginStatus::NotAuthenticated,
-        None => LoginStatus::NotAuthenticated,
-    })
-}
-
 async fn load_config_or_exit(
     cli_kv_overrides: Vec<(String, toml::Value)>,
     overrides: ConfigOverrides,
@@ -1962,28 +1851,6 @@ async fn load_bootstrap_config_or_exit(
 /// Determine if the user has decided whether to trust the current directory.
 fn should_show_trust_screen(config: &Config) -> bool {
     config.active_project.trust_level.is_none()
-}
-
-fn should_show_onboarding(
-    login_status: LoginStatus,
-    config: &Config,
-    show_trust_screen: bool,
-) -> bool {
-    if show_trust_screen {
-        return true;
-    }
-
-    should_show_login_screen(login_status, config)
-}
-
-fn should_show_login_screen(login_status: LoginStatus, config: &Config) -> bool {
-    // Only show the login screen for providers that actually require OpenAI auth
-    // (OpenAI or equivalents). For OSS/other providers, skip login entirely.
-    if !config.model_provider.requires_openai_auth {
-        return false;
-    }
-
-    login_status == LoginStatus::NotAuthenticated
 }
 
 #[cfg(test)]
@@ -2437,7 +2304,7 @@ mod tests {
 
     #[test]
     fn resolve_remote_addr_accepts_default_socket() -> color_eyre::Result<()> {
-        let codex_home = find_codex_home().wrap_err("failed to resolve CODEX_HOME")?;
+        let codex_home = find_codex_home().wrap_err("failed to resolve Redapto home")?;
         assert_eq!(
             resolve_remote_addr("unix://")?,
             RemoteAppServerEndpoint::UnixSocket {

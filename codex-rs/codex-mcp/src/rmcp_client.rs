@@ -927,7 +927,7 @@ async fn start_server_task(
             client_tools.clone(),
         ),
         (None, None) => client_tools.clone(),
-        _ => unreachable!("Codex Apps fetch ticket requires cache context"),
+        _ => unreachable!("Redapto Apps fetch ticket requires cache context"),
     };
     let has_shared_tool_catalog = is_codex_apps_mcp_server || tool_catalog_cache_context.is_some();
     if let (Some(cache_context), Some(fetch_ticket)) = (
@@ -976,7 +976,7 @@ fn mcp_initialize_request_params(
     }
     InitializeRequestParams::new(
         capabilities,
-        Implementation::new("codex-mcp-client", env!("CARGO_PKG_VERSION")).with_title("Codex"),
+        Implementation::new("redapto-mcp-client", env!("CARGO_PKG_VERSION")).with_title("Redapto"),
     )
     .with_protocol_version(ProtocolVersion::V_2025_06_18)
 }
@@ -1032,7 +1032,7 @@ async fn make_rmcp_client(
         && !has_explicit_http_authorization(&config)
     {
         return Err(StartupOutcomeError::from(anyhow!(
-            "executor-owned MCP server `{server_name}` cannot use hosted ChatGPT authentication; configure executor-owned credentials instead"
+            "executor-owned MCP server `{server_name}` cannot use hosted-provider authentication; configure executor-owned credentials instead"
         )));
     }
     let resolved_environment =

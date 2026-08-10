@@ -111,7 +111,7 @@ fn safety_buffering_notification(
 }
 
 #[tokio::test]
-async fn safety_buffering_offers_one_retry_with_app_wording() {
+async fn safety_buffering_offers_one_retry_with_redapto_wording() {
     let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     let (thread_id, turn_id, _) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);
 
@@ -128,21 +128,6 @@ async fn safety_buffering_offers_one_retry_with_app_wording() {
     let popup = render_bottom_popup(&chat, /*width*/ 80);
     assert_chatwidget_snapshot!("safety_buffering_retry_prompt", popup);
 
-    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    let opened_url = loop {
-        match rx.try_recv() {
-            Ok(AppEvent::OpenUrlInBrowser { url }) => break url,
-            Ok(_) => continue,
-            Err(err) => panic!("expected learn-more URL event: {err}"),
-        }
-    };
-    assert_eq!(opened_url, "https://help.openai.com/en/articles/20001326");
-    assert!(render_bottom_popup(&chat, /*width*/ 80).contains(SAFETY_BUFFERING_HEADER_TEXT));
-
-    chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
     chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     let (event_thread_id, event_turn_id, model, turn, prompt) = loop {
         match rx.try_recv() {
@@ -1360,7 +1345,8 @@ async fn live_app_server_cyber_policy_error_renders_dedicated_notice() {
     assert_eq!(cells.len(), 1);
     let rendered = lines_to_single_string(&cells[0]);
     assert!(rendered.contains("This content can't be shown"));
-    assert!(rendered.contains("extra caution with cybersecurity requests"));
+    assert!(rendered.contains("applies extra caution to cybersecurity requests"));
+    assert!(rendered.contains("provider administrator"));
     assert!(!rendered.contains("server fallback message"));
     assert!(!chat.bottom_pane.is_task_running());
 }
@@ -1394,7 +1380,8 @@ async fn app_server_safety_access_errors_render_dedicated_notice() {
         assert_eq!(cells.len(), 1);
         let rendered = lines_to_single_string(&cells[0]);
         assert!(rendered.contains("This content can't be shown"));
-        assert!(rendered.contains("biological research"));
+        assert!(rendered.contains("requests involving biological"));
+        assert!(rendered.contains("provider administrator"));
         rendered_cases.push((case, rendered));
     }
 
@@ -1426,8 +1413,7 @@ async fn live_app_server_model_verification_renders_warning() {
     let rendered = lines_to_single_string(&cells[0]);
     assert!(rendered.contains("multiple flags for possible cybersecurity risk"));
     assert!(rendered.contains("extra safety checks are on"));
-    assert!(rendered.contains("Trusted Access for Cyber"));
-    assert!(rendered.contains("https://chatgpt.com/cyber"));
+    assert!(rendered.contains("provider administrator"));
 }
 
 #[tokio::test]

@@ -2027,7 +2027,7 @@ mod tests {
     #[test]
     fn composite_requirement_source_flattens_and_deduplicates_sources() {
         let mdm_source = RequirementSource::MdmManagedPreferences {
-            domain: "com.openai.codex".to_string(),
+            domain: "com.redapto".to_string(),
             key: "requirements_toml_base64".to_string(),
         };
         let legacy_source = RequirementSource::LegacyManagedConfigTomlFromMdm;
@@ -2957,7 +2957,7 @@ allowed_approvals_reviewers = ["user"]
     fn merge_unset_fields_merges_apps_across_sources_with_enabled_evaluation() {
         let higher_source = RequirementSource::LegacyManagedConfigTomlFromMdm;
         let lower_source = RequirementSource::MdmManagedPreferences {
-            domain: "com.openai.codex".to_string(),
+            domain: "com.redapto".to_string(),
             key: "requirements_toml_base64".to_string(),
         };
         let mut target = ConfigRequirementsWithSources::default();
@@ -3084,7 +3084,7 @@ allowed_approvals_reviewers = ["user"]
 
         let source_location = RequirementSource::composite([
             RequirementSource::MdmManagedPreferences {
-                domain: "com.openai.codex".to_string(),
+                domain: "com.redapto".to_string(),
                 key: "requirements_toml_base64".to_string(),
             },
             RequirementSource::LegacyManagedConfigTomlFromMdm,

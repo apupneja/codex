@@ -895,7 +895,7 @@ pub(super) async fn fetch_additional_plugin_remote_sections(
     if !remote_plugin_enabled {
         sections.push((
             "vertical",
-            "OpenAI Curated",
+            "Redapto Curated",
             vec![PluginListMarketplaceKind::Vertical],
         ));
     }
@@ -938,34 +938,40 @@ pub(super) async fn fetch_additional_plugin_remote_sections(
 
 fn plugin_remote_section_error_message(label: &str, err: &str) -> String {
     let next_step = plugin_remote_section_error_next_step(label, err);
+    let message = err
+        .replace("ChatGPT authentication", "hosted account connection")
+        .replace("chatgpt authentication", "hosted account connection")
+        .replace("api key auth", "API-key access")
+        .replace("Codex", "Redapto")
+        .replace("codex", "Redapto");
     if next_step.is_empty() {
-        err.to_string()
+        message
     } else {
-        format!("{err} {next_step}")
+        format!("{message} {next_step}")
     }
 }
 
 fn plugin_remote_section_error_next_step(label: &str, err: &str) -> &'static str {
     let err = err.to_ascii_lowercase();
     if err.contains("api key auth is not supported") {
-        "Sign in with ChatGPT auth; API key auth cannot load remote plugin catalogs."
+        "This connection cannot load remote plugin catalogs."
     } else if err.contains("authentication required")
         || err.contains("not signed in")
         || err.contains("not logged in")
     {
-        "Sign in to ChatGPT, then try loading this section again."
+        "Connect the required workspace account, then try again."
     } else if err.contains("codex plugins are disabled")
         || err.contains("plugin sharing is disabled")
         || err.contains("plugin sharing is not enabled")
         || err.contains("feature disabled")
     {
-        "Ask a workspace admin to enable Codex plugins or plugin sharing."
+        "Ask a workspace admin to enable Redapto plugins or plugin sharing."
     } else if err.contains("workspace") && (err.contains("access") || err.contains("mismatch")) {
         "Switch to the matching workspace or ask the sharer for access."
     } else if err.contains("not found") || err.contains("status 404") {
-        "Check that you are signed in to the correct workspace and still have access."
+        "Check that the connected workspace still has access."
     } else if err.contains("old build") || err.contains("update codex") || err.contains("stale") {
-        "Update Codex, then try opening the shared plugin again."
+        "Update Redapto, then try opening the shared plugin again."
     } else if err.contains("service unavailable")
         || err.contains("temporarily unavailable")
         || err.contains("status 503")
@@ -987,7 +993,7 @@ fn plugin_sharing_disabled_remote_section_error() -> PluginRemoteSectionError {
     PluginRemoteSectionError {
         section_id: "shared-with-me".to_string(),
         label: "Shared with me".to_string(),
-        message: "Plugin sharing is disabled for this Codex session. Enable plugin sharing to load shared plugins.".to_string(),
+        message: "Plugin sharing is disabled for this Redapto session. Enable plugin sharing to load shared plugins.".to_string(),
     }
 }
 
@@ -1378,49 +1384,57 @@ mod tests {
             (
                 "Workspace",
                 "chatgpt authentication required for remote plugin catalog",
-                "Sign in to ChatGPT, then try loading this section again.",
+                "hosted account connection required for remote plugin catalog",
+                "Connect the required workspace account, then try again.",
             ),
             (
-                "OpenAI Curated",
+                "Redapto Curated",
                 "chatgpt authentication required for remote plugin catalog; api key auth is not supported",
-                "Sign in with ChatGPT auth; API key auth cannot load remote plugin catalogs.",
+                "hosted account connection required for remote plugin catalog; API-key access is not supported",
+                "This connection cannot load remote plugin catalogs.",
             ),
             (
                 "Shared with me",
                 "remote plugin catalog request failed with status 404: missing",
-                "Check that you are signed in to the correct workspace and still have access.",
+                "remote plugin catalog request failed with status 404: missing",
+                "Check that the connected workspace still has access.",
             ),
             (
                 "Shared with me",
+                "workspace access mismatch",
                 "workspace access mismatch",
                 "Switch to the matching workspace or ask the sharer for access.",
             ),
             (
                 "Shared with me",
                 "old build fallback",
-                "Update Codex, then try opening the shared plugin again.",
+                "old build fallback",
+                "Update Redapto, then try opening the shared plugin again.",
             ),
             (
                 "Shared with me",
+                "remote service unavailable",
                 "remote service unavailable",
                 "Try again later; local plugin functionality is still available.",
             ),
             (
                 "Workspace",
                 "plugin disabled by admin",
+                "plugin disabled by admin",
                 "Ask a workspace admin to confirm plugin access.",
             ),
             (
                 "Shared with me",
                 "plugin sharing is not enabled",
-                "Ask a workspace admin to enable Codex plugins or plugin sharing.",
+                "plugin sharing is not enabled",
+                "Ask a workspace admin to enable Redapto plugins or plugin sharing.",
             ),
         ];
 
-        for (label, err, next_step) in cases {
+        for (label, err, display_err, next_step) in cases {
             assert_eq!(
                 plugin_remote_section_error_message(label, err),
-                format!("{err} {next_step}")
+                format!("{display_err} {next_step}")
             );
         }
     }
@@ -1432,7 +1446,7 @@ mod tests {
             PluginRemoteSectionError {
                 section_id: "shared-with-me".to_string(),
                 label: "Shared with me".to_string(),
-                message: "Plugin sharing is disabled for this Codex session. Enable plugin sharing to load shared plugins.".to_string(),
+                message: "Plugin sharing is disabled for this Redapto session. Enable plugin sharing to load shared plugins.".to_string(),
             }
         );
     }

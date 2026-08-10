@@ -1,4 +1,4 @@
-//! Support for `-c key=value` overrides shared across Codex CLI tools.
+//! Support for `-c key=value` overrides shared across Redapto CLI tools.
 //!
 //! This module provides a [`CliConfigOverrides`] struct that can be embedded
 //! into a `clap`-derived CLI struct using `#[clap(flatten)]`. Each occurrence
@@ -18,12 +18,12 @@ use toml::Value;
 #[derive(Parser, Debug, Default, Clone)]
 pub struct CliConfigOverrides {
     /// Override a configuration value that would otherwise be loaded from
-    /// `~/.codex/config.toml`. Use a dotted path (`foo.bar.baz`) to override
+    /// `~/.redapto/config.toml`. Use a dotted path (`foo.bar.baz`) to override
     /// nested values. The `value` portion is parsed as TOML. If it fails to
     /// parse as TOML, the raw string is used as a literal.
     ///
     /// Examples:
-    ///   - `-c model="o3"`
+    ///   - `-c model="provider-model"`
     ///   - `-c 'sandbox_permissions=["disk-full-read-access"]'`
     ///   - `-c shell_environment_policy.inherit=all`
     #[arg(

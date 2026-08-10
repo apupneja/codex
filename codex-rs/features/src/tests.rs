@@ -247,6 +247,18 @@ fn codex_hooks_is_legacy_alias_for_hooks() {
 }
 
 #[test]
+fn codex_git_commit_is_legacy_alias_for_redapto_git_commit() {
+    assert_eq!(
+        feature_for_key("redapto_git_commit"),
+        Some(Feature::RedaptoGitCommit)
+    );
+    assert_eq!(
+        feature_for_key("codex_git_commit"),
+        Some(Feature::RedaptoGitCommit)
+    );
+}
+
+#[test]
 fn apps_require_feature_flag_and_chatgpt_auth() {
     let mut features = Features::with_defaults();
     assert!(!features.apps_enabled_for_auth(/*has_chatgpt_auth*/ false));

@@ -79,7 +79,7 @@ pub struct CodexErr {
 #[strum_discriminants(serde(rename_all = "snake_case"))]
 #[strum_discriminants(doc = "The payload-free semantic category used for analytics.")]
 pub enum CodexErrorDetails {
-    #[error("turn aborted. Something went wrong? Hit `/feedback` to report the issue.")]
+    #[error("turn aborted")]
     TurnAborted,
 
     #[error("shared rollout token budget exhausted")]
@@ -92,7 +92,7 @@ pub enum CodexErrorDetails {
     #[error("stream disconnected before completion: {0}")]
     Stream(String),
     #[error(
-        "Codex ran out of room in the model's context window. Start a new thread or clear earlier history before retrying."
+        "Redapto ran out of room in the model's context window. Start a new thread or clear earlier history before retrying."
     )]
     ContextWindowExceeded,
     #[error("no thread with id: {0}")]
@@ -112,7 +112,7 @@ pub enum CodexErrorDetails {
     Spawn,
     /// Returned by run_command_stream when the user pressed Ctrl-C (SIGINT). Session uses this to
     /// surface a polite FunctionCallOutput back to the model instead of crashing the CLI.
-    #[error("interrupted (Ctrl-C). Something went wrong? Hit `/feedback` to report the issue.")]
+    #[error("interrupted (Ctrl-C)")]
     Interrupted,
     /// Unexpected HTTP status code.
     #[error("{0}")]
@@ -139,7 +139,7 @@ pub enum CodexErrorDetails {
     #[error("Quota exceeded. Check your plan and billing details.")]
     QuotaExceeded,
     #[error(
-        "To use Codex with your ChatGPT plan, upgrade to Plus: https://chatgpt.com/explore/plus."
+        "Usage is not included in the current provider plan. Contact your provider administrator."
     )]
     UsageNotIncluded,
     #[error("We're currently experiencing high demand, which may cause temporary errors.")]
@@ -686,7 +686,7 @@ impl std::fmt::Display for UsageLimitReachedError {
 
         let message = match self.plan_type.as_ref() {
             Some(PlanType::Known(KnownPlan::Plus)) => format!(
-                "You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits{}",
+                "You've hit your usage limit. Contact your provider to increase limits{}",
                 retry_suffix_after_or(self.resets_at.as_ref())
             ),
             Some(PlanType::Known(
@@ -705,12 +705,12 @@ impl std::fmt::Display for UsageLimitReachedError {
             }
             Some(PlanType::Known(KnownPlan::Free)) | Some(PlanType::Known(KnownPlan::Go)) => {
                 format!(
-                    "You've hit your usage limit. Upgrade to Plus to continue using Codex (https://chatgpt.com/explore/plus),{}",
+                    "You've hit your usage limit. Contact your provider to increase limits{}",
                     retry_suffix_after_or(self.resets_at.as_ref())
                 )
             }
             Some(PlanType::Known(KnownPlan::Pro | KnownPlan::ProLite)) => format!(
-                "You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits{}",
+                "You've hit your usage limit. Contact your provider to increase limits{}",
                 retry_suffix_after_or(self.resets_at.as_ref())
             ),
             Some(PlanType::Known(KnownPlan::Enterprise))

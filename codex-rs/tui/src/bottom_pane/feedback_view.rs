@@ -30,18 +30,12 @@ use super::popup_consts::standard_popup_hint_line;
 use super::textarea::TextArea;
 use super::textarea::TextAreaState;
 
-const BASE_CLI_BUG_ISSUE_URL: &str =
-    "https://github.com/openai/codex/issues/new?template=3-cli.yml";
-/// Internal routing link for employee feedback follow-ups. This must not be shown to external users.
-const CODEX_FEEDBACK_INTERNAL_URL: &str = "http://go/codex-feedback-internal";
-
 /// The target audience for feedback follow-up instructions.
 ///
 /// This is used strictly for messaging/links after feedback upload completes. It
 /// must not change feedback upload behavior itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FeedbackAudience {
-    OpenAiEmployee,
     External,
 }
 
@@ -311,90 +305,26 @@ pub(crate) fn feedback_classification(category: FeedbackCategory) -> &'static st
 }
 
 pub(crate) fn feedback_success_cell(
-    category: FeedbackCategory,
+    _category: FeedbackCategory,
     include_logs: bool,
     thread_id: &str,
-    feedback_audience: FeedbackAudience,
+    _feedback_audience: FeedbackAudience,
 ) -> history_cell::WebHyperlinkHistoryCell {
     let prefix = if include_logs {
         "• Feedback uploaded."
     } else {
         "• Feedback recorded (no logs)."
     };
-    let issue_url = issue_url_for_category(category, thread_id, feedback_audience);
-    let mut lines = vec![Line::from(match issue_url.as_ref() {
-        Some(_) if feedback_audience == FeedbackAudience::OpenAiEmployee => {
-            format!("{prefix} Please report this in #codex-feedback:")
-        }
-        Some(_) => format!("{prefix} Please open an issue using the following URL:"),
-        None => format!("{prefix} Thanks for the feedback!"),
-    })];
-    match issue_url {
-        Some(url) if feedback_audience == FeedbackAudience::OpenAiEmployee => {
-            lines.extend([
-                "".into(),
-                Line::from(vec!["  ".into(), url.cyan().underlined()]),
-                "".into(),
-                Line::from("  Share this and add some info about your problem:"),
-                Line::from(vec![
-                    "    ".into(),
-                    format!("https://go/codex-feedback/{thread_id}").bold(),
-                ]),
-            ]);
-        }
-        Some(url) => {
-            lines.extend([
-                "".into(),
-                Line::from(vec!["  ".into(), url.cyan().underlined()]),
-                "".into(),
-                Line::from(vec![
-                    "  Or mention your thread ID ".into(),
-                    thread_id.to_string().bold(),
-                    " in an existing issue.".into(),
-                ]),
-            ]);
-        }
-        None => {
-            lines.extend([
-                "".into(),
-                Line::from(vec!["  Thread ID: ".into(), thread_id.to_string().bold()]),
-            ]);
-        }
-    }
+    let lines = vec![
+        Line::from(format!("{prefix} Thanks for the feedback!")),
+        "".into(),
+        Line::from(vec!["  Thread ID: ".into(), thread_id.to_string().bold()]),
+    ];
     history_cell::WebHyperlinkHistoryCell::new(lines)
 }
 
-fn issue_url_for_category(
-    category: FeedbackCategory,
-    thread_id: &str,
-    feedback_audience: FeedbackAudience,
-) -> Option<String> {
-    // Only certain categories provide a follow-up link. We intentionally keep
-    // the external GitHub behavior identical while routing internal users to
-    // the internal go link.
-    match category {
-        FeedbackCategory::Bug
-        | FeedbackCategory::BadResult
-        | FeedbackCategory::SafetyCheck
-        | FeedbackCategory::Other => Some(match feedback_audience {
-            FeedbackAudience::OpenAiEmployee => slack_feedback_url(thread_id),
-            FeedbackAudience::External => {
-                format!("{BASE_CLI_BUG_ISSUE_URL}&steps=Uploaded%20thread:%20{thread_id}")
-            }
-        }),
-        FeedbackCategory::GoodResult => None,
-    }
-}
-
-/// Build the internal follow-up URL.
-///
-/// We accept a `thread_id` so the call site stays symmetric with the external
-/// path, but we currently point to a fixed channel without prefilling text.
-fn slack_feedback_url(_thread_id: &str) -> String {
-    CODEX_FEEDBACK_INTERNAL_URL.to_string()
-}
-
 // Build the selection popup params for feedback categories.
+#[allow(dead_code)] // The Redapto feedback entry point is disabled for now.
 pub(crate) fn feedback_selection_params(
     app_event_tx: AppEventSender,
 ) -> super::SelectionViewParams {
@@ -437,6 +367,7 @@ pub(crate) fn feedback_selection_params(
 }
 
 /// Build the selection popup params shown when feedback is disabled.
+#[allow(dead_code)] // The Redapto feedback entry point is disabled for now.
 pub(crate) fn feedback_disabled_params() -> super::SelectionViewParams {
     super::SelectionViewParams {
         title: Some("Sending feedback is disabled".to_string()),
@@ -451,6 +382,7 @@ pub(crate) fn feedback_disabled_params() -> super::SelectionViewParams {
     }
 }
 
+#[allow(dead_code)] // The Redapto feedback entry point is disabled for now.
 fn make_feedback_item(
     app_event_tx: AppEventSender,
     name: &str,
@@ -506,7 +438,7 @@ pub(crate) fn feedback_upload_consent_params(
         Line::from("Upload logs?".bold()).into(),
         Line::from("").into(),
         Line::from("The following files will be sent:".dim()).into(),
-        Line::from(vec!["  • ".into(), "codex-logs.log".into()]).into(),
+        Line::from(vec!["  • ".into(), "redapto-logs.log".into()]).into(),
         Line::from(vec![
             "  • ".into(),
             DOCTOR_REPORT_ATTACHMENT_FILENAME.into(),
@@ -567,7 +499,7 @@ pub(crate) fn feedback_upload_consent_params(
             super::SelectionItem {
                 name: "Yes".to_string(),
                 description: Some(
-                    "Share the current Codex session logs and diagnostics with the team for troubleshooting."
+                    "Share the current Redapto session logs and diagnostics with the team for troubleshooting."
                         .to_string(),
                 ),
                 actions: vec![yes_action],
@@ -827,52 +759,7 @@ mod tests {
     }
 
     #[test]
-    fn issue_url_available_for_bug_bad_result_safety_check_and_other() {
-        let bug_url = issue_url_for_category(
-            FeedbackCategory::Bug,
-            "thread-1",
-            FeedbackAudience::OpenAiEmployee,
-        );
-        let expected_slack_url = "http://go/codex-feedback-internal".to_string();
-        assert_eq!(bug_url.as_deref(), Some(expected_slack_url.as_str()));
-
-        let bad_result_url = issue_url_for_category(
-            FeedbackCategory::BadResult,
-            "thread-2",
-            FeedbackAudience::OpenAiEmployee,
-        );
-        assert!(bad_result_url.is_some());
-
-        let other_url = issue_url_for_category(
-            FeedbackCategory::Other,
-            "thread-3",
-            FeedbackAudience::OpenAiEmployee,
-        );
-        assert!(other_url.is_some());
-
-        let safety_check_url = issue_url_for_category(
-            FeedbackCategory::SafetyCheck,
-            "thread-4",
-            FeedbackAudience::OpenAiEmployee,
-        );
-        assert!(safety_check_url.is_some());
-
-        assert!(
-            issue_url_for_category(
-                FeedbackCategory::GoodResult,
-                "t",
-                FeedbackAudience::OpenAiEmployee
-            )
-            .is_none()
-        );
-        let bug_url_non_employee =
-            issue_url_for_category(FeedbackCategory::Bug, "t", FeedbackAudience::External);
-        let expected_external_url = "https://github.com/openai/codex/issues/new?template=3-cli.yml&steps=Uploaded%20thread:%20t";
-        assert_eq!(bug_url_non_employee.as_deref(), Some(expected_external_url));
-    }
-
-    #[test]
-    fn feedback_success_cell_matches_external_bug_copy() {
+    fn feedback_success_cell_includes_thread_id() {
         let rendered = render_cell(
             &feedback_success_cell(
                 FeedbackCategory::Bug,
@@ -884,24 +771,7 @@ mod tests {
         );
         assert_eq!(
             rendered,
-            "• Feedback uploaded. Please open an issue using the following URL:\n\n  https://github.com/openai/codex/issues/new?template=3-cli.yml&steps=Uploaded%20thread:%20thread-1\n\n  Or mention your thread ID thread-1 in an existing issue."
-        );
-    }
-
-    #[test]
-    fn feedback_success_cell_matches_employee_bug_copy() {
-        let rendered = render_cell(
-            &feedback_success_cell(
-                FeedbackCategory::Bug,
-                /*include_logs*/ true,
-                "thread-2",
-                FeedbackAudience::OpenAiEmployee,
-            ),
-            /*width*/ 120,
-        );
-        assert_eq!(
-            rendered,
-            "• Feedback uploaded. Please report this in #codex-feedback:\n\n  http://go/codex-feedback-internal\n\n  Share this and add some info about your problem:\n    https://go/codex-feedback/thread-2"
+            "• Feedback uploaded. Thanks for the feedback!\n\n  Thread ID: thread-1"
         );
     }
 
@@ -923,7 +793,7 @@ mod tests {
     }
 
     #[test]
-    fn feedback_success_cell_uses_issue_links_for_remaining_categories() {
+    fn feedback_success_cell_is_generic_for_remaining_categories() {
         for category in [
             FeedbackCategory::BadResult,
             FeedbackCategory::SafetyCheck,
@@ -938,7 +808,7 @@ mod tests {
                 ),
                 /*width*/ 120,
             );
-            assert!(rendered.contains("Please open an issue using the following URL:"));
+            assert!(rendered.contains("Thanks for the feedback!"));
             assert!(rendered.contains("thread-4"));
         }
     }

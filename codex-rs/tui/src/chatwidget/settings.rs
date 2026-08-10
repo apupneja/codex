@@ -199,20 +199,20 @@ impl ChatWidget {
         self.plan_type
     }
 
-    pub(crate) fn has_chatgpt_account(&self) -> bool {
-        self.has_chatgpt_account
+    pub(crate) fn has_hosted_provider_account(&self) -> bool {
+        self.has_hosted_provider_account
     }
 
-    pub(crate) fn has_codex_backend_auth(&self) -> bool {
-        self.has_codex_backend_auth
+    pub(crate) fn has_hosted_provider_auth(&self) -> bool {
+        self.has_hosted_provider_auth
     }
 
     pub(crate) fn update_account_state(
         &mut self,
         status_account_display: Option<StatusAccountDisplay>,
         plan_type: Option<PlanType>,
-        has_chatgpt_account: bool,
-        has_codex_backend_auth: bool,
+        has_hosted_provider_account: bool,
+        has_hosted_provider_auth: bool,
     ) {
         // Account-update notifications are the identity boundary. The visible account fields can
         // be identical across two accounts, so always invalidate account-scoped requests and data.
@@ -238,12 +238,12 @@ impl ChatWidget {
         self.status_line_workspace_messages_disabled = false;
         self.status_account_display = status_account_display;
         self.plan_type = plan_type;
-        self.has_chatgpt_account = has_chatgpt_account;
-        self.has_codex_backend_auth = has_codex_backend_auth;
+        self.has_hosted_provider_account = has_hosted_provider_account;
+        self.has_hosted_provider_auth = has_hosted_provider_auth;
         self.bottom_pane
             .set_connectors_enabled(self.connectors_enabled());
         self.bottom_pane
-            .set_token_activity_command_enabled(has_codex_backend_auth);
+            .set_token_activity_command_enabled(has_hosted_provider_auth);
         self.refresh_status_surfaces();
     }
 

@@ -31,8 +31,6 @@ use super::selection_popup_common::GenericDisplayRow;
 use super::selection_popup_common::measure_rows_height;
 use super::selection_popup_common::render_rows;
 
-const MEMORIES_DOC_URL: &str = "https://developers.openai.com/codex/memories";
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum MemoriesSetting {
     Use,
@@ -64,7 +62,6 @@ pub(crate) struct MemoriesSettingsView {
     reset_confirmation: Option<ScrollState>,
     complete: bool,
     app_event_tx: AppEventSender,
-    docs_link: Line<'static>,
     keymap: ListKeymap,
 }
 
@@ -99,10 +96,6 @@ impl MemoriesSettingsView {
             reset_confirmation: None,
             complete: false,
             app_event_tx,
-            docs_link: Line::from(vec![
-                "Learn more: ".dim(),
-                MEMORIES_DOC_URL.cyan().underlined(),
-            ]),
             keymap,
         };
         view.initialize_selection();
@@ -117,7 +110,7 @@ impl MemoriesSettingsView {
         let mut header = ColumnRenderable::new();
         header.push(Line::from("Memories".bold()));
         header.push(Line::from(
-            "Choose how Codex uses and creates memories. Changes are saved to config.toml".dim(),
+            "Choose how Redapto uses and creates memories. Changes are saved to config.toml".dim(),
         ));
         header
     }
@@ -126,7 +119,7 @@ impl MemoriesSettingsView {
         let mut header = ColumnRenderable::new();
         header.push(Line::from("Reset all memories?".bold()));
         header.push(Line::from(
-            "This clears local memory files and rollout summaries for the current Codex home."
+            "This clears local memory files and rollout summaries for the current Redapto home."
                 .dim(),
         ));
         header
@@ -397,12 +390,10 @@ impl Renderable for MemoriesSettingsView {
             MAX_POPUP_ROWS,
             rows_width.saturating_add(1),
         );
-        let [header_area, _, list_area, _, docs_area] = Layout::vertical([
+        let [header_area, _, list_area] = Layout::vertical([
             Constraint::Max(header_height),
             Constraint::Max(1),
             Constraint::Length(rows_height),
-            Constraint::Max(1),
-            Constraint::Length(1),
         ])
         .areas(content_area.inset(Insets::vh(/*v*/ 1, /*h*/ 2)));
 
@@ -424,11 +415,6 @@ impl Renderable for MemoriesSettingsView {
                 "  No memory settings available",
             );
         }
-        if self.reset_confirmation.is_none() {
-            self.docs_link.clone().render(docs_area, buf);
-            crate::terminal_hyperlinks::mark_url_hyperlink(buf, docs_area, MEMORIES_DOC_URL);
-        }
-
         let hint_area = Rect {
             x: footer_area.x + 2,
             y: footer_area.y,
@@ -453,13 +439,8 @@ impl Renderable for MemoriesSettingsView {
             rows_width.saturating_add(1),
         );
 
-        let docs_height = if self.reset_confirmation.is_some() {
-            0
-        } else {
-            1
-        };
         let mut height = header.desired_height(width.saturating_sub(4));
-        height = height.saturating_add(rows_height + 4 + docs_height);
+        height = height.saturating_add(rows_height + 3);
         height.saturating_add(1)
     }
 }

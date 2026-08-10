@@ -29,17 +29,16 @@ pub use feedback_diagnostics::FEEDBACK_DIAGNOSTICS_ATTACHMENT_FILENAME;
 pub use feedback_diagnostics::FeedbackDiagnostic;
 pub use feedback_diagnostics::FeedbackDiagnostics;
 
-/// Filename used for the redacted `codex doctor --json` feedback attachment.
-pub const DOCTOR_REPORT_ATTACHMENT_FILENAME: &str = "codex-doctor-report.json";
-/// Filename used for the raw Codex Apps MCP tools cache feedback attachment.
-pub const CODEX_APPS_TOOLS_CACHE_ATTACHMENT_FILENAME: &str = "codex-apps-tools-cache.json";
+/// Filename used for the redacted Redapto diagnostics feedback attachment.
+pub const DOCTOR_REPORT_ATTACHMENT_FILENAME: &str = "redapto-diagnostics-report.json";
+/// Filename used for the raw Redapto MCP tools cache feedback attachment.
+pub const CODEX_APPS_TOOLS_CACHE_ATTACHMENT_FILENAME: &str = "redapto-tools-cache.json";
 /// Filename used for the raw connector directory cache feedback attachment.
-pub const CODEX_APP_DIRECTORY_CACHE_ATTACHMENT_FILENAME: &str = "codex-app-directory-cache.json";
+pub const CODEX_APP_DIRECTORY_CACHE_ATTACHMENT_FILENAME: &str = "redapto-app-directory-cache.json";
 /// Filename used for the Windows sandbox log feedback attachment.
 pub const WINDOWS_SANDBOX_LOG_ATTACHMENT_FILENAME: &str = "windows-sandbox.log";
 const DEFAULT_MAX_BYTES: usize = 4 * 1024 * 1024; // 4 MiB
-const SENTRY_DSN: &str =
-    "https://ae32ed50620d7a7792c1ce5df38b3e3e@o33249.ingest.us.sentry.io/4510195390611458";
+const REDAPTO_FEEDBACK_DSN_ENV_VAR: &str = "REDAPTO_FEEDBACK_DSN";
 const UPLOAD_TIMEOUT_SECS: u64 = 10;
 const FEEDBACK_TAGS_TARGET: &str = "feedback_tags";
 const MAX_FEEDBACK_TAGS: usize = 64;
@@ -392,7 +391,7 @@ pub struct FeedbackUploadOptions<'a> {
     pub include_logs: bool,
     /// Generated attachments that are already buffered and safe to upload.
     ///
-    /// These are included after `codex-logs.log` and before path-backed rollout
+    /// These are included after `redapto-logs.log` and before path-backed rollout
     /// attachments. They are only passed by the caller after any user consent
     /// gate has decided logs and diagnostics should be uploaded.
     pub extra_attachments: &'a [FeedbackAttachment],
@@ -433,9 +432,13 @@ impl FeedbackSnapshot {
         use sentry::transports::DefaultTransportFactory;
         use sentry::types::Dsn;
 
-        // Build Sentry client
+        let dsn = std::env::var(REDAPTO_FEEDBACK_DSN_ENV_VAR).map_err(|_| {
+            anyhow!("feedback upload is not configured; set {REDAPTO_FEEDBACK_DSN_ENV_VAR}")
+        })?;
+
+        // Build the Redapto-owned Sentry client.
         let client = Client::from_config(ClientOptions {
-            dsn: Some(Dsn::from_str(SENTRY_DSN).map_err(|e| anyhow!("invalid DSN: {e}"))?),
+            dsn: Some(Dsn::from_str(&dsn).map_err(|e| anyhow!("invalid DSN: {e}"))?),
             transport: Some(Arc::new(DefaultTransportFactory {})),
             ..Default::default()
         });
@@ -454,7 +457,7 @@ impl FeedbackSnapshot {
 
         let mut envelope = Envelope::new();
         let title = format!(
-            "[{}]: Codex session {}",
+            "[{}]: Redapto session {}",
             display_classification(options.classification),
             self.thread_id
         );
@@ -554,7 +557,7 @@ impl FeedbackSnapshot {
         if include_logs {
             attachments.push(Attachment {
                 buffer: logs_override.unwrap_or_else(|| self.bytes.clone()),
-                filename: String::from("codex-logs.log"),
+                filename: String::from("redapto-logs.log"),
                 content_type: Some("text/plain".to_string()),
                 ty: None,
             });
@@ -789,7 +792,7 @@ mod tests {
 
     #[test]
     fn feedback_attachments_gate_connectivity_diagnostics() {
-        let extra_filename = format!("codex-feedback-extra-{}.jsonl", ThreadId::new());
+        let extra_filename = format!("redapto-feedback-extra-{}.jsonl", ThreadId::new());
         let extra_path = std::env::temp_dir().join(&extra_filename);
         let extra_attachment_path = FeedbackAttachmentPath {
             path: extra_path.clone(),
@@ -822,7 +825,7 @@ mod tests {
                 .map(|attachment| attachment.filename.as_str())
                 .collect::<Vec<_>>(),
             vec![
-                "codex-logs.log",
+                "redapto-logs.log",
                 DOCTOR_REPORT_ATTACHMENT_FILENAME,
                 FEEDBACK_DIAGNOSTICS_ATTACHMENT_FILENAME,
                 extra_filename.as_str()
@@ -856,7 +859,7 @@ mod tests {
                 .iter()
                 .map(|attachment| attachment.filename.as_str())
                 .collect::<Vec<_>>(),
-            vec!["codex-logs.log"]
+            vec!["redapto-logs.log"]
         );
         assert_eq!(attachments_without_diagnostics[0].buffer, vec![1]);
         fs::remove_file(extra_path).expect("extra attachment should be removed");
@@ -865,8 +868,8 @@ mod tests {
     #[test]
     fn path_backed_attachments_use_binary_content_types() {
         let suffix = ThreadId::new();
-        let gzip_filename = format!("codex-desktop-app-logs-{suffix}.tar.gz");
-        let unknown_filename = format!("codex-feedback-extra-{suffix}.binunknown");
+        let gzip_filename = format!("redapto-desktop-app-logs-{suffix}.tar.gz");
+        let unknown_filename = format!("redapto-feedback-extra-{suffix}.binunknown");
         let gzip_path = std::env::temp_dir().join(&gzip_filename);
         let unknown_path = std::env::temp_dir().join(&unknown_filename);
         let gzip_bytes = b"\x1f\x8b\x08\x00\xff";

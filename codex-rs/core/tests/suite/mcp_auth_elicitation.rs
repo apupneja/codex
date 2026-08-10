@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use codex_core::config::Constrained;
+use codex_features::Feature;
 use codex_mcp::CODEX_APPS_MCP_SERVER_NAME;
 use codex_protocol::approvals::ElicitationRequest;
 use codex_protocol::protocol::AskForApproval;
@@ -71,7 +72,7 @@ impl Respond for AuthFailureResponder {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn codex_apps_auth_failure_requests_elicitation_by_default() -> Result<()> {
+async fn codex_apps_auth_failure_requests_elicitation_when_enabled() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
     let server = start_mock_server().await;
@@ -119,6 +120,7 @@ async fn codex_apps_auth_failure_requests_elicitation_by_default() -> Result<()>
     let mut builder =
         search_capable_apps_builder(apps_server.chatgpt_base_url).with_config(|config| {
             config.permissions.approval_policy = Constrained::allow_any(AskForApproval::OnRequest);
+            let _ = config.features.enable(Feature::AuthElicitation);
             let user_config_path = config.codex_home.join("config.toml").abs();
             let user_config = toml::from_str(
                 r#"
@@ -181,7 +183,7 @@ default_tools_approval_mode = "auto"
                     },
                 },
             })),
-            message: "Reconnect Calendar on ChatGPT to restore access for this request."
+            message: "Reconnect Calendar with your provider to restore access for this request."
                 .to_string(),
             url: "https://chatgpt.com/apps/calendar/calendar".to_string(),
             elicitation_id: format!("codex_apps_auth_{call_id}"),
@@ -208,7 +210,7 @@ default_tools_approval_mode = "auto"
         .function_call_output_text(call_id)
         .expect("follow-up request should contain the auth elicitation result");
     assert!(output.contains(
-        "Authentication for Calendar was requested and accepted. Retry this tool call now."
+        "A connection for Calendar was requested and accepted. Retry this tool call now."
     ));
     assert!(!output.contains("Connector reauthentication required"));
 

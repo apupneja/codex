@@ -111,7 +111,7 @@ impl App {
                 return;
             }
             ServerNotification::AccountUpdated(notification) => {
-                let has_codex_backend_auth = matches!(
+                let has_hosted_provider_auth = matches!(
                     notification.auth_mode,
                     Some(
                         AuthMode::Chatgpt
@@ -129,7 +129,7 @@ impl App {
                     notification
                         .auth_mode
                         .is_some_and(AuthMode::has_chatgpt_account),
-                    has_codex_backend_auth,
+                    has_hosted_provider_auth,
                 );
                 return;
             }

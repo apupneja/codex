@@ -30,7 +30,7 @@ impl ChatWidget {
     }
 
     fn usage_menu_params(&self) -> SelectionViewParams {
-        let reset_eligible = self.has_chatgpt_account;
+        let reset_eligible = self.has_hosted_provider_account;
         let (reset_action_enabled, reset_description) =
             match (reset_eligible, self.available_rate_limit_reset_credits) {
                 (true, Some(available_count)) if available_count > 0 => (
@@ -507,7 +507,7 @@ impl ChatWidget {
         for snapshot in snapshots {
             self.on_rate_limit_snapshot(Some(snapshot));
         }
-        if !self.has_codex_backend_auth {
+        if !self.has_hosted_provider_auth {
             return false;
         }
         if let Ok(response) = result {

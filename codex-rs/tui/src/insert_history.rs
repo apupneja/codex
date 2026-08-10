@@ -49,7 +49,7 @@ pub enum HistoryLineWrapPolicy {
 /// Selects the terminal escape strategy used when writing history above the viewport.
 ///
 /// Raw lines intentionally remain unbroken so terminal selection copies their source faithfully.
-/// Zellij does not constrain soft-wrapped continuation rows to Codex's scroll region, so its raw
+/// Zellij does not constrain soft-wrapped continuation rows to Redapto's scroll region, so its raw
 /// path appends history through the terminal and reserves blank rows for the next viewport draw.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum InsertHistoryMode {

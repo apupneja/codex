@@ -49,6 +49,10 @@ const ALIASES: &[Alias] = &[
         legacy_key: "codex_hooks",
         feature: Feature::CodexHooks,
     },
+    Alias {
+        legacy_key: "codex_git_commit",
+        feature: Feature::RedaptoGitCommit,
+    },
 ];
 
 pub fn legacy_feature_keys() -> impl Iterator<Item = &'static str> {

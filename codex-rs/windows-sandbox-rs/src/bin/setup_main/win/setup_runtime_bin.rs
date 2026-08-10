@@ -91,12 +91,12 @@ pub(super) fn ensure_codex_app_runtime_paths_readable(
 fn runtime_paths(local_app_data: Option<PathBuf>, user_profile: Option<PathBuf>) -> Vec<PathBuf> {
     let mut runtime_paths = Vec::new();
     if let Some(local_app_data) = local_app_data {
-        let codex_root = local_app_data.join("OpenAI").join("Codex");
+        let codex_root = local_app_data.join("Redapto");
         runtime_paths.extend([codex_root.join("bin"), codex_root.join("runtimes")]);
     }
     // The managed primary runtime is installed outside the LocalAppData runtime roots.
     if let Some(user_profile) = user_profile {
-        runtime_paths.push(user_profile.join(".cache").join("codex-runtimes"));
+        runtime_paths.push(user_profile.join(".cache").join("redapto-runtimes"));
     }
 
     runtime_paths

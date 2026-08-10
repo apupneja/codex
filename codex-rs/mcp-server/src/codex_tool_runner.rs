@@ -1,4 +1,4 @@
-//! Asynchronous worker that executes a **Codex** tool-call inside a spawned
+//! Asynchronous worker that executes a **Redapto** tool-call inside a spawned
 //! Tokio task. Separated from `message_processor.rs` to keep that file small
 //! and to make future feature-growth easier to manage.
 
@@ -30,7 +30,7 @@ use rmcp::model::RequestId;
 use serde_json::json;
 use uuid::Uuid;
 
-/// To adhere to MCP `tools/call` response format, include the Codex
+/// To adhere to MCP `tools/call` response format, include the Redapto
 /// `threadId` in the `structured_content` field of the response.
 /// Some MCP clients ignore `content` when `structuredContent` is present, so
 /// mirror the text there as well.
@@ -51,7 +51,7 @@ pub(crate) fn create_call_tool_result_with_thread_id(
     result
 }
 
-/// Run a complete Codex session and stream events back to the client.
+/// Run a complete Redapto session and stream events back to the client.
 ///
 /// On completion (success or error) the function sends the appropriate
 /// `tools/call` response so the LLM can continue the conversation.
@@ -74,7 +74,7 @@ pub async fn run_codex_tool_session(
         Ok(res) => res,
         Err(e) => {
             let result = CallToolResult::error(vec![ContentBlock::text(format!(
-                "Failed to start Codex session: {e}"
+                "Failed to start Redapto session: {e}"
             ))]);
             outgoing.send_response(id.clone(), result);
             return;
@@ -390,7 +390,7 @@ async fn run_codex_tool_session_inner(
             Err(e) => {
                 let result = create_call_tool_result_with_thread_id(
                     thread_id,
-                    format!("Codex runtime error: {e}"),
+                    format!("Redapto runtime error: {e}"),
                     Some(true),
                 );
                 active_turns.finish(&request_id, || {

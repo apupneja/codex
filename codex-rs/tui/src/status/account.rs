@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StatusAccountDisplay {
-    ChatGpt {
+    Provider {
         email: Option<String>,
         plan: Option<String>,
     },

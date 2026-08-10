@@ -1082,7 +1082,7 @@ mod tests {
     #[test]
     fn terminal_draw_coalesces_wrapped_hyperlink_output() {
         let auth_url = format!(
-            "https://auth.openai.com/oauth/authorize?response_type=code&state={}",
+            "https://auth.provider.example/oauth/authorize?response_type=code&state={}",
             "x".repeat(/*n*/ 400)
         );
         let width = 44;

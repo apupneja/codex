@@ -230,7 +230,7 @@ async fn account_update_invalidates_usage_menu_refresh_when_visible_state_is_unc
 
     chat.update_account_state(
         /*status_account_display*/ None, /*plan_type*/ None,
-        /*has_chatgpt_account*/ true, /*has_codex_backend_auth*/ true,
+        /*has_hosted_provider_account*/ true, /*has_hosted_provider_auth*/ true,
     );
     chat.finish_usage_menu_rate_limit_refresh(
         /*request_id*/ 1,
@@ -822,7 +822,7 @@ async fn account_change_invalidates_pending_reset_requests() {
 
     chat.update_account_state(
         /*status_account_display*/ None, /*plan_type*/ None,
-        /*has_chatgpt_account*/ false, /*has_codex_backend_auth*/ false,
+        /*has_hosted_provider_account*/ false, /*has_hosted_provider_auth*/ false,
     );
 
     assert!(!chat.finish_rate_limit_reset_credits_refresh(
@@ -936,7 +936,7 @@ async fn account_change_dismisses_reset_popup_beneath_overlay() {
 
     chat.update_account_state(
         /*status_account_display*/ None, /*plan_type*/ None,
-        /*has_chatgpt_account*/ false, /*has_codex_backend_auth*/ false,
+        /*has_hosted_provider_account*/ false, /*has_hosted_provider_auth*/ false,
     );
     assert!(!chat.show_rate_limit_reset_confirmation(
         request_id,

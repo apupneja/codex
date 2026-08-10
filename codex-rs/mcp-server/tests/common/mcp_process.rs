@@ -161,8 +161,8 @@ impl McpProcess {
                     },
                 },
                 "serverInfo": {
-                    "name": "codex-mcp-server",
-                    "title": "Codex",
+                    "name": "redapto-mcp-server",
+                    "title": "Redapto",
                     "version": "0.0.0",
                     "user_agent": user_agent
                 },

@@ -613,7 +613,7 @@ sandbox_private_desktop = false
                 .expect_err("version drift should fail");
         let message = error.to_string();
         assert!(
-            message.contains("config lock Codex version mismatch"),
+            message.contains("config lock Redapto version mismatch"),
             "{message}"
         );
         assert!(

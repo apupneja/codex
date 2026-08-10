@@ -1,3 +1,3 @@
-# Codex CLI
+# Redapto CLI
 
-[**Codex CLI Documentation**](https://developers.openai.com/codex/cli)
+Build and local-run instructions live in the [repository README](../README.md).

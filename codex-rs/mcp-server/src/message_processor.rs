@@ -249,10 +249,10 @@ impl MessageProcessor {
             *suffix = Some(user_agent_suffix);
         }
 
-        let server_info =
-            Implementation::new("codex-mcp-server", env!("CARGO_PKG_VERSION")).with_title("Codex");
+        let server_info = Implementation::new("redapto-mcp-server", env!("CARGO_PKG_VERSION"))
+            .with_title("Redapto");
 
-        // Preserve Codex's existing non-spec `serverInfo.user_agent` field.
+        // Preserve the existing non-spec `serverInfo.user_agent` field.
         let mut server_info_value = match serde_json::to_value(&server_info) {
             Ok(value) => value,
             Err(err) => {
@@ -353,8 +353,8 @@ impl MessageProcessor {
         } = params;
 
         match name.as_ref() {
-            "codex" => self.handle_tool_call_codex(id, arguments).await,
-            "codex-reply" => {
+            "redapto" | "codex" => self.handle_tool_call_codex(id, arguments).await,
+            "redapto-reply" | "codex-reply" => {
                 self.handle_tool_call_codex_session_reply(id, arguments)
                     .await
             }
@@ -379,7 +379,7 @@ impl MessageProcessor {
                     Ok(cfg) => cfg,
                     Err(e) => {
                         let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(
-                            format!("Failed to load Codex configuration from overrides: {e}"),
+                            format!("Failed to load Redapto configuration from overrides: {e}"),
                         )]);
                         self.outgoing.send_response(id, result);
                         return;
@@ -387,7 +387,7 @@ impl MessageProcessor {
                 },
                 Err(e) => {
                     let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(
-                        format!("Failed to parse configuration for Codex tool: {e}"),
+                        format!("Failed to parse configuration for Redapto tool: {e}"),
                     )]);
                     self.outgoing.send_response(id, result);
                     return;
@@ -395,7 +395,7 @@ impl MessageProcessor {
             },
             None => {
                 let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(
-                    "Missing arguments for codex tool-call; the `prompt` field is required.",
+                    "Missing arguments for redapto tool-call; the `prompt` field is required.",
                 )]);
                 self.outgoing.send_response(id, result);
                 return;
@@ -407,10 +407,10 @@ impl MessageProcessor {
         let thread_manager = self.thread_manager.clone();
         let active_turns = Arc::clone(&self.active_turns);
 
-        // Spawn an async task to handle the Codex session so that we do not
+        // Spawn an async task to handle the Redapto session so that we do not
         // block the synchronous message-processing loop.
         task::spawn(async move {
-            // Run the Codex session and stream events back to the client.
+            // Run the Redapto session and stream events back to the client.
             crate::codex_tool_runner::run_codex_tool_session(
                 id,
                 initial_prompt,
@@ -436,9 +436,9 @@ impl MessageProcessor {
             Some(json_val) => match serde_json::from_value::<CodexToolCallReplyParam>(json_val) {
                 Ok(params) => params,
                 Err(e) => {
-                    tracing::error!("Failed to parse Codex tool call reply parameters: {e}");
+                    tracing::error!("Failed to parse Redapto tool call reply parameters: {e}");
                     let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(
-                        format!("Failed to parse configuration for Codex tool: {e}"),
+                        format!("Failed to parse configuration for Redapto tool: {e}"),
                     )]);
                     self.outgoing.send_response(request_id, result);
                     return;
@@ -446,10 +446,10 @@ impl MessageProcessor {
             },
             None => {
                 tracing::error!(
-                    "Missing arguments for codex-reply tool-call; the `thread_id` and `prompt` fields are required."
+                    "Missing arguments for redapto-reply tool-call; the `thread_id` and `prompt` fields are required."
                 );
                 let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(
-                    "Missing arguments for codex-reply tool-call; the `thread_id` and `prompt` fields are required.",
+                    "Missing arguments for redapto-reply tool-call; the `thread_id` and `prompt` fields are required.",
                 )]);
                 self.outgoing.send_response(request_id, result);
                 return;
@@ -548,7 +548,7 @@ impl MessageProcessor {
         };
         tracing::info!("thread_id: {thread_id}");
 
-        // Obtain the Codex thread from the server.
+        // Obtain the Redapto thread from the server.
         let codex_arc = match self.thread_manager.get_thread(thread_id).await {
             Ok(c) => c,
             Err(_) => {
@@ -557,7 +557,7 @@ impl MessageProcessor {
             }
         };
 
-        // Submit interrupt to Codex.
+        // Submit the interrupt to Redapto.
         if let Err(e) = codex_arc
             .submit_with_id(Submission {
                 id: request_id_string,
@@ -568,7 +568,7 @@ impl MessageProcessor {
             })
             .await
         {
-            tracing::error!("Failed to submit interrupt to Codex: {e}");
+            tracing::error!("Failed to submit interrupt to Redapto: {e}");
             return;
         }
         // Stop routing extension events to the cancelled turn.

@@ -160,7 +160,7 @@ pub(crate) async fn maybe_install_mcp_dependencies(
             McpOAuthLoginSupport::Supported(config) => config,
             McpOAuthLoginSupport::Unsupported => continue,
             McpOAuthLoginSupport::Unknown(err) => {
-                warn!("MCP server may or may not require login for dependency {name}: {err}");
+                warn!("MCP server may require authorization for dependency {name}: {err}");
                 continue;
             }
         };
@@ -206,10 +206,10 @@ pub(crate) async fn maybe_install_mcp_dependencies(
                 )
                 .await
                 {
-                    warn!("failed to login to MCP dependency {name}: {err}");
+                    warn!("failed to authorize MCP dependency {name}: {err}");
                 }
             } else {
-                warn!("failed to login to MCP dependency {name}: {err}");
+                warn!("failed to authorize MCP dependency {name}: {err}");
             }
         }
     }

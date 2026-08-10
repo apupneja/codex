@@ -138,7 +138,7 @@ impl RequestPluginInstallHandler {
             && turn.app_server_client_name.as_deref() == Some("codex-tui")
         {
             return Err(FunctionCallError::RespondToModel(
-                "plugin install requests are not available in codex-tui yet".to_string(),
+                "plugin install requests are not available in the Redapto TUI yet".to_string(),
             ));
         }
 
@@ -474,7 +474,7 @@ async fn refresh_missing_requested_connectors(
         }
         Err(err) => {
             warn!(
-                "failed to refresh codex apps tools cache after plugin install request for {tool_id}: {err:#}"
+                "failed to refresh Redapto Apps tools cache after plugin install request for {tool_id}: {err:#}"
             );
             None
         }

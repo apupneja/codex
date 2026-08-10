@@ -1,9 +1,9 @@
 //! Built-in pet asset acquisition and cache ownership.
 //!
 //! Unlike custom pets, built-in pets are not checked into the TUI package as
-//! local spritesheets. The TUI resolves them from the public Codex pets CDN on
+//! local spritesheets. The TUI resolves them from the Redapto asset endpoint on
 //! first use, verifies that the downloaded file has the expected spritesheet
-//! geometry, and installs it into a versioned cache under CODEX_HOME.
+//! geometry, and installs it into a versioned cache under REDAPTO_HOME.
 //!
 //! This module deliberately stops at "a validated spritesheet exists at this
 //! path". Higher layers remain responsible for deciding when downloads are
@@ -26,7 +26,7 @@ use super::catalog;
 
 const PET_PACK_VERSION: &str = "v1";
 const PET_PACK_DIR: &str = "cache/tui-pets";
-const PET_CDN_BASE_URL: &str = "https://persistent.oaistatic.com/codex/pets/v1";
+const PET_ASSET_BASE_URL_ENV_VAR: &str = "REDAPTO_PET_ASSET_BASE_URL";
 const PET_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
 const PET_MAX_DOWNLOAD_BYTES: u64 = 4 * 1024 * 1024;
 
@@ -58,7 +58,10 @@ pub(crate) async fn ensure_builtin_pet(
         return Ok(());
     }
 
-    let url = builtin_pet_url(pet)?;
+    let base_url = std::env::var(PET_ASSET_BASE_URL_ENV_VAR).with_context(|| {
+        format!("{PET_ASSET_BASE_URL_ENV_VAR} must be set to download built-in pet assets")
+    })?;
+    let url = builtin_pet_url(pet, &base_url)?;
     let bytes = download_bytes_with_limit(http_client, &url, PET_MAX_DOWNLOAD_BYTES).await?;
     tokio::task::spawn_blocking(move || {
         let parent = destination
@@ -96,8 +99,12 @@ pub(crate) async fn ensure_builtin_pet(
     .context("join pet spritesheet install task")?
 }
 
-fn builtin_pet_url(pet: catalog::BuiltinPet) -> Result<String> {
-    let url = format!("{PET_CDN_BASE_URL}/{}", pet.spritesheet_file);
+fn builtin_pet_url(pet: catalog::BuiltinPet, base_url: &str) -> Result<String> {
+    let url = format!(
+        "{}/{}",
+        base_url.trim_end_matches('/'),
+        pet.spritesheet_file
+    );
     validate_download_url(&url)?;
     Ok(url)
 }
@@ -194,14 +201,14 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn builtin_pet_url_uses_public_cdn_path() {
+    fn builtin_pet_url_uses_configured_asset_path() {
         let pet = catalog::builtin_pet("dewey").unwrap();
 
-        let url = builtin_pet_url(pet).unwrap();
+        let url = builtin_pet_url(pet, "https://assets.redapto.example/pets/v1/").unwrap();
 
         assert_eq!(
             url,
-            "https://persistent.oaistatic.com/codex/pets/v1/dewey-spritesheet-v4.webp"
+            "https://assets.redapto.example/pets/v1/dewey-spritesheet-v4.webp"
         );
     }
 

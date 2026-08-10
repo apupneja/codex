@@ -37,7 +37,7 @@ impl ChatWidget {
         service_tier.is_some_and(|service_tier| {
             service_tier == ServiceTier::Fast.request_value()
                 && self.model_supports_service_tier(model, service_tier)
-        }) && self.has_chatgpt_account
+        }) && self.has_hosted_provider_account
     }
 
     pub(super) fn fast_mode_enabled(&self) -> bool {

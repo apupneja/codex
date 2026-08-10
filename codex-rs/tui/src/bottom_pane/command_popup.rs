@@ -393,9 +393,9 @@ mod tests {
 
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     #[test]
-    fn app_command_popup_snapshot() {
+    fn approve_command_popup_snapshot() {
         let mut popup = CommandPopup::new(CommandPopupFlags::default(), Vec::new());
-        popup.on_composer_text_change("/app".to_string());
+        popup.on_composer_text_change("/approve".to_string());
 
         let width = 72;
         let area = Rect::new(
@@ -407,7 +407,7 @@ mod tests {
         let mut buf = Buffer::empty(area);
         popup.render_ref(area, &mut buf);
 
-        insta::assert_snapshot!("command_popup_app", format!("{buf:?}"));
+        insta::assert_snapshot!("command_popup_approve", format!("{buf:?}"));
     }
 
     #[cfg(target_os = "macos")]

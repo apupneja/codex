@@ -531,13 +531,13 @@ impl InProcessAppServerClient {
                                 request_id.clone(),
                                 JSONRPCErrorError {
                                     code: -32000,
-                                    message: "chatgpt auth token refresh is not supported for in-process app-server clients".to_string(),
+                                    message: "hosted-account token refresh is not supported for in-process app-server clients".to_string(),
                                     data: None,
                                 },
                             );
                             if let Err(err) = send_result {
                                 warn!(
-                                    "failed to reject unsupported chatgpt auth token refresh request: {err}"
+                                    "failed to reject unsupported hosted-account token refresh request: {err}"
                                 );
                             }
                             continue;
