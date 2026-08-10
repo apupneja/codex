@@ -347,7 +347,7 @@ impl ChatWidget {
         self.finalize_turn();
 
         let message = if message.trim().is_empty() {
-            "Codex is currently experiencing high load.".to_string()
+            "Redapto is currently experiencing high load.".to_string()
         } else {
             message
         };
@@ -411,13 +411,13 @@ impl ChatWidget {
         match rate_limit_reached_type {
             Some(RateLimitReachedType::WorkspaceOwnerCreditsDepleted) => {
                 self.on_error(
-                    "You're out of credits. Your workspace is out of credits. Add credits to continue using Codex."
+                    "You're out of credits. Your workspace is out of credits. Add credits to continue using Redapto."
                         .to_string(),
                 );
             }
             Some(RateLimitReachedType::WorkspaceOwnerUsageLimitReached) => {
                 self.on_error(
-                    "Usage limit reached. You've reached your usage limit. Increase your limits to continue using codex."
+                    "Usage limit reached. You've reached your usage limit. Increase your limits to continue using Redapto."
                         .to_string(),
                 );
             }
@@ -516,6 +516,6 @@ impl ChatWidget {
             return "Goal budget reached - the turn was stopped.".to_string();
         }
 
-        "Conversation interrupted - tell the model what to do differently. Something went wrong? Hit `/feedback` to report the issue.".to_string()
+        "Conversation interrupted - tell the model what to do differently.".to_string()
     }
 }

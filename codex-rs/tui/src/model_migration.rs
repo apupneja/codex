@@ -82,7 +82,7 @@ pub(crate) fn migration_copy_for_models(
     }
 
     let heading_text = Span::from(format!(
-        "Codex just got an upgrade. Introducing {target_display_name}."
+        "Redapto just got an upgrade. Introducing {target_display_name}."
     ))
     .bold();
     let description_line: Line<'static>;
@@ -107,16 +107,11 @@ pub(crate) fn migration_copy_for_models(
         content.push(Line::from(""));
     }
 
-    if let Some(model_link) = model_link {
-        content.push(Line::from(vec![
-            format!("{description_line} Learn more about {target_display_name} at ").into(),
-            model_link.cyan().underlined(),
-        ]));
-        content.push(Line::from(""));
-    } else {
-        content.push(description_line);
-        content.push(Line::from(""));
-    }
+    // Provider-owned model links are intentionally omitted from the downstream
+    // Redapto surface until Redapto has a canonical model documentation host.
+    let _ = model_link;
+    content.push(description_line);
+    content.push(Line::from(""));
 
     if can_opt_out {
         content.push(Line::from(format!(
@@ -342,7 +337,7 @@ impl ModelMigrationScreen {
     fn render_menu(&self, column: &mut ColumnRenderable) {
         column.push(Line::from(""));
         column.push(
-            Paragraph::new("Choose how you'd like Codex to proceed.")
+            Paragraph::new("Choose how you'd like Redapto to proceed.")
                 .wrap(Wrap { trim: false })
                 .inset(Insets::tlbr(
                     /*top*/ 0, /*left*/ 2, /*bottom*/ 0, /*right*/ 0,
@@ -435,12 +430,12 @@ mod tests {
                 "gpt-5.1-codex-max",
                 /*model_link*/ None,
                 Some(
-                    "Upgrade to gpt-5.2-codex for the latest and greatest agentic coding model."
+                    "Upgrade to the recommended model for the latest agentic coding improvements."
                         .to_string(),
                 ),
                 /*migration_markdown*/ None,
                 "gpt-5.1-codex-max".to_string(),
-                Some("Codex-optimized flagship for deep and fast reasoning.".to_string()),
+                Some("Redapto-optimized flagship for deep and fast reasoning.".to_string()),
                 /*can_opt_out*/ true,
             ),
         );
@@ -465,7 +460,7 @@ mod tests {
             migration_copy_for_models(
                 "gpt-5",
                 "gpt-5.1",
-                Some("https://www.codex.com/models/gpt-5.1".to_string()),
+                Some("https://models.example/gpt-5.1".to_string()),
                 /*migration_copy*/ None,
                 /*migration_markdown*/ None,
                 "gpt-5.1".to_string(),
@@ -492,11 +487,11 @@ mod tests {
             migration_copy_for_models(
                 "gpt-5-codex",
                 "gpt-5.1-codex-max",
-                Some("https://www.codex.com/models/gpt-5.1-codex-max".to_string()),
+                Some("https://models.example/gpt-5.1-codex-max".to_string()),
                 /*migration_copy*/ None,
                 /*migration_markdown*/ None,
                 "gpt-5.1-codex-max".to_string(),
-                Some("Codex-optimized flagship for deep and fast reasoning.".to_string()),
+                Some("Redapto-optimized flagship for deep and fast reasoning.".to_string()),
                 /*can_opt_out*/ false,
             ),
         );
@@ -519,11 +514,11 @@ mod tests {
             migration_copy_for_models(
                 "gpt-5-codex-mini",
                 "gpt-5.1-codex-mini",
-                Some("https://www.codex.com/models/gpt-5.1-codex-mini".to_string()),
+                Some("https://models.example/gpt-5.1-codex-mini".to_string()),
                 /*migration_copy*/ None,
                 /*migration_markdown*/ None,
                 "gpt-5.1-codex-mini".to_string(),
-                Some("Optimized for codex. Cheaper, faster, but less capable.".to_string()),
+                Some("Optimized for Redapto. Cheaper, faster, but less capable.".to_string()),
                 /*can_opt_out*/ false,
             ),
         );
@@ -542,7 +537,7 @@ mod tests {
             migration_copy_for_models(
                 "gpt-old",
                 "gpt-new",
-                Some("https://www.codex.com/models/gpt-new".to_string()),
+                Some("https://models.example/gpt-new".to_string()),
                 /*migration_copy*/ None,
                 /*migration_markdown*/ None,
                 "gpt-new".to_string(),
@@ -571,7 +566,7 @@ mod tests {
             migration_copy_for_models(
                 "gpt-old",
                 "gpt-new",
-                Some("https://www.codex.com/models/gpt-new".to_string()),
+                Some("https://models.example/gpt-new".to_string()),
                 /*migration_copy*/ None,
                 /*migration_markdown*/ None,
                 "gpt-new".to_string(),

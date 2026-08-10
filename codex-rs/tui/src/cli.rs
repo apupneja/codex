@@ -8,7 +8,7 @@ use codex_utils_cli::SharedCliOptions;
 #[derive(Parser, Clone, Debug)]
 #[command(version)]
 pub struct Cli {
-    /// Process-only PSP routing selected by the parent Codex CLI.
+    /// Process-only provider routing selected by the parent Redapto CLI.
     #[clap(skip)]
     pub psp: bool,
 
@@ -16,12 +16,12 @@ pub struct Cli {
     #[arg(value_name = "PROMPT", value_hint = clap::ValueHint::Other)]
     pub prompt: Option<String>,
 
-    /// Error out when config.toml contains fields that are not recognized by this version of Codex.
+    /// Error out when config.toml contains fields that are not recognized by this version of Redapto.
     #[arg(long = "strict-config", default_value_t = false)]
     pub strict_config: bool,
 
-    // Internal controls set by the top-level `codex resume` subcommand.
-    // These are not exposed as user flags on the base `codex` command.
+    // Internal controls set by the top-level `redapto resume` subcommand.
+    // These are not exposed as user flags on the base `redapto` command.
     #[clap(skip)]
     pub resume_picker: bool,
 
@@ -29,7 +29,7 @@ pub struct Cli {
     pub resume_last: bool,
 
     /// Internal: resume a specific recorded session by id (UUID). Set by the
-    /// top-level `codex resume <SESSION_ID>` wrapper; not exposed as a public flag.
+    /// top-level `redapto resume <SESSION_ID>` wrapper; not exposed as a public flag.
     #[clap(skip)]
     pub resume_session_id: Option<String>,
 
@@ -41,8 +41,8 @@ pub struct Cli {
     #[clap(skip)]
     pub resume_include_non_interactive: bool,
 
-    // Internal controls set by the top-level `codex fork` subcommand.
-    // These are not exposed as user flags on the base `codex` command.
+    // Internal controls set by the top-level `redapto fork` subcommand.
+    // These are not exposed as user flags on the base `redapto` command.
     #[clap(skip)]
     pub fork_picker: bool,
 
@@ -50,7 +50,7 @@ pub struct Cli {
     pub fork_last: bool,
 
     /// Internal: fork a specific recorded session by id (UUID). Set by the
-    /// top-level `codex fork <SESSION_ID>` wrapper; not exposed as a public flag.
+    /// top-level `redapto fork <SESSION_ID>` wrapper; not exposed as a public flag.
     #[clap(skip)]
     pub fork_session_id: Option<String>,
 

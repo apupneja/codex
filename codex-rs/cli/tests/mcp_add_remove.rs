@@ -74,7 +74,7 @@ async fn add_and_remove_server_updates_global_config() -> Result<()> {
 }
 
 #[tokio::test]
-async fn add_and_login_discover_oauth_through_configured_http_proxy() -> Result<()> {
+async fn add_and_authorize_discover_oauth_through_configured_http_proxy() -> Result<()> {
     let codex_home = TempDir::new()?;
     let proxy = MockServer::start().await;
     let resource_url = "http://cli-mcp.invalid";
@@ -130,7 +130,7 @@ async fn add_and_login_discover_oauth_through_configured_http_proxy() -> Result<
     let add_output = tokio::task::spawn_blocking(move || add.output()).await??;
     assert!(
         !add_output.status.success(),
-        "mock OAuth registration should terminate the automatic login"
+        "mock OAuth registration should terminate automatic authorization"
     );
     assert!(
         load_global_mcp_servers(codex_home.path())
@@ -138,11 +138,11 @@ async fn add_and_login_discover_oauth_through_configured_http_proxy() -> Result<
             .contains_key("oauth")
     );
 
-    // Local OAuth login does not require the execution-environment registry.
+    // Local OAuth authorization does not require the execution-environment registry.
     std::fs::write(codex_home.path().join("environments.toml"), "invalid = [")?;
 
-    let mut login = codex_command(codex_home.path())?;
-    login
+    let mut authorize = codex_command(codex_home.path())?;
+    authorize
         .env("HTTP_PROXY", proxy.uri())
         .env("http_proxy", proxy.uri())
         .env_remove("HTTPS_PROXY")
@@ -155,13 +155,13 @@ async fn add_and_login_discover_oauth_through_configured_http_proxy() -> Result<
             "-c",
             "mcp_oauth_credentials_store=\"file\"",
             "mcp",
-            "login",
+            "authorize",
             "oauth",
         ]);
-    let login_output = tokio::task::spawn_blocking(move || login.output()).await??;
+    let authorize_output = tokio::task::spawn_blocking(move || authorize.output()).await??;
     assert!(
-        !login_output.status.success(),
-        "mock OAuth registration should terminate the explicit login"
+        !authorize_output.status.success(),
+        "mock OAuth registration should terminate explicit authorization"
     );
 
     let registrations = proxy

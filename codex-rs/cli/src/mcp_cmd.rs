@@ -45,10 +45,10 @@ mod cloud_config;
 /// Subcommands:
 /// - `list`   — list configured servers (with `--json`)
 /// - `get`    — show a single server (with `--json`)
-/// - `add`    — add a server launcher entry to `~/.codex/config.toml`
+/// - `add`    — add a server launcher entry to `~/.redapto/config.toml`
 /// - `remove` — delete a server entry
-/// - `login`  — authenticate with MCP server using OAuth
-/// - `logout` — remove OAuth credentials for MCP server
+/// - `authorize`   — authenticate with an MCP server using OAuth
+/// - `deauthorize` — remove OAuth credentials for an MCP server
 #[derive(Debug, clap::Parser)]
 pub struct McpCli {
     #[clap(flatten)]
@@ -64,8 +64,8 @@ pub enum McpSubcommand {
     Get(GetArgs),
     Add(AddArgs),
     Remove(RemoveArgs),
-    Login(LoginArgs),
-    Logout(LogoutArgs),
+    Authorize(AuthorizeArgs),
+    Deauthorize(DeauthorizeArgs),
 }
 
 #[derive(Debug, clap::Parser)]
@@ -86,7 +86,7 @@ pub struct GetArgs {
 }
 
 #[derive(Debug, clap::Parser)]
-#[command(override_usage = "codex mcp add [OPTIONS] <NAME> (--url <URL> | -- <COMMAND>...)")]
+#[command(override_usage = "redapto mcp add [OPTIONS] <NAME> (--url <URL> | -- <COMMAND>...)")]
 pub struct AddArgs {
     /// Name for the MCP server configuration.
     pub name: String,
@@ -151,7 +151,7 @@ pub struct AddMcpStreamableHttpArgs {
     #[arg(long = "oauth-client-id", value_name = "CLIENT_ID", requires = "url")]
     pub oauth_client_id: Option<String>,
 
-    /// Optional OAuth resource parameter to include during MCP login.
+    /// Optional OAuth resource parameter to include during MCP authorization.
     #[arg(long = "oauth-resource", value_name = "RESOURCE", requires = "url")]
     pub oauth_resource: Option<String>,
 }
@@ -163,8 +163,8 @@ pub struct RemoveArgs {
 }
 
 #[derive(Debug, clap::Parser)]
-pub struct LoginArgs {
-    /// Name of the MCP server to authenticate with oauth.
+pub struct AuthorizeArgs {
+    /// Name of the MCP server to authorize with OAuth.
     pub name: String,
 
     /// Comma-separated list of OAuth scopes to request.
@@ -173,8 +173,8 @@ pub struct LoginArgs {
 }
 
 #[derive(Debug, clap::Parser)]
-pub struct LogoutArgs {
-    /// Name of the MCP server to deauthenticate.
+pub struct DeauthorizeArgs {
+    /// Name of the MCP server to deauthorize.
     pub name: String,
 }
 
@@ -206,15 +206,15 @@ impl McpCli {
             McpSubcommand::Remove(args) => {
                 run_remove(&config_overrides, args).await?;
             }
-            McpSubcommand::Login(args) => {
+            McpSubcommand::Authorize(args) => {
                 let config =
                     cloud_config::load_mcp_config(&config_overrides, loader_overrides).await?;
-                run_login(&config, args).await?;
+                run_authorize(&config, args).await?;
             }
-            McpSubcommand::Logout(args) => {
+            McpSubcommand::Deauthorize(args) => {
                 let config =
                     cloud_config::load_mcp_config(&config_overrides, loader_overrides).await?;
-                run_logout(&config, args).await?;
+                run_deauthorize(&config, args).await?;
             }
         }
 
@@ -224,7 +224,7 @@ impl McpCli {
 
 /// Preserve compatibility with servers that still expect the legacy empty-scope
 /// OAuth request. If a discovered-scope request is rejected by the provider,
-/// retry the login flow once without scopes.
+/// retry the authorization flow once without scopes.
 #[allow(clippy::too_many_arguments)]
 async fn perform_oauth_login_retry_without_scopes(
     name: &str,
@@ -311,7 +311,7 @@ async fn run_add(config_overrides: &CliConfigOverrides, add_args: AddArgs) -> Re
 
     validate_server_name(&name)?;
 
-    let codex_home = find_codex_home().context("failed to resolve CODEX_HOME")?;
+    let codex_home = find_codex_home().context("failed to resolve Redapto home")?;
     let mut servers = load_global_mcp_servers(&codex_home)
         .await
         .with_context(|| format!("failed to load MCP servers from {}", codex_home.display()))?;
@@ -433,11 +433,11 @@ async fn run_add(config_overrides: &CliConfigOverrides, add_args: AddArgs) -> Re
                 http_client,
             )
             .await?;
-            println!("Successfully logged in.");
+            println!("OAuth authorization completed.");
         }
         McpOAuthLoginSupport::Unsupported => {}
         McpOAuthLoginSupport::Unknown(_) => println!(
-            "MCP server may or may not require login. Run `codex mcp login {name}` to login."
+            "MCP server may require OAuth authorization. Run `redapto mcp authorize {name}` to authorize it."
         ),
     }
 
@@ -453,7 +453,7 @@ async fn run_remove(config_overrides: &CliConfigOverrides, remove_args: RemoveAr
 
     validate_server_name(&name)?;
 
-    let codex_home = find_codex_home().context("failed to resolve CODEX_HOME")?;
+    let codex_home = find_codex_home().context("failed to resolve Redapto home")?;
     let mut servers = load_global_mcp_servers(&codex_home)
         .await
         .with_context(|| format!("failed to load MCP servers from {}", codex_home.display()))?;
@@ -483,11 +483,11 @@ async fn load_mcp_manager(config: &Config) -> McpManager {
     McpManager::new(plugins_manager)
 }
 
-async fn run_login(config: &Config, login_args: LoginArgs) -> Result<()> {
+async fn run_authorize(config: &Config, authorize_args: AuthorizeArgs) -> Result<()> {
     let mcp_manager = load_mcp_manager(config).await;
     let mcp_servers = mcp_manager.configured_servers(config).await;
 
-    let LoginArgs { name, scopes } = login_args;
+    let AuthorizeArgs { name, scopes } = authorize_args;
 
     let Some(server) = mcp_servers.get(&name) else {
         bail!("No MCP server named '{name}' found.");
@@ -500,10 +500,10 @@ async fn run_login(config: &Config, login_args: LoginArgs) -> Result<()> {
             env_http_headers,
             ..
         } => (url.clone(), http_headers.clone(), env_http_headers.clone()),
-        _ => bail!("OAuth login is only supported for streamable HTTP servers."),
+        _ => bail!("OAuth authorization is only supported for streamable HTTP servers."),
     };
 
-    // Standalone `mcp login` runs OAuth from the local CLI process; execution
+    // Standalone `mcp authorize` runs OAuth from the local CLI process; execution
     // environment routing belongs to app-server and session MCP flows.
     let http_client: Arc<dyn HttpClient> =
         Arc::new(RouteAwareHttpClient::new(config.http_client_factory()));
@@ -538,15 +538,15 @@ async fn run_login(config: &Config, login_args: LoginArgs) -> Result<()> {
         http_client,
     )
     .await?;
-    println!("Successfully logged in to MCP server '{name}'.");
+    println!("Authorized MCP server '{name}'.");
     Ok(())
 }
 
-async fn run_logout(config: &Config, logout_args: LogoutArgs) -> Result<()> {
+async fn run_deauthorize(config: &Config, deauthorize_args: DeauthorizeArgs) -> Result<()> {
     let mcp_manager = load_mcp_manager(config).await;
     let mcp_servers = mcp_manager.configured_servers(config).await;
 
-    let LogoutArgs { name } = logout_args;
+    let DeauthorizeArgs { name } = deauthorize_args;
 
     let server = mcp_servers
         .get(&name)
@@ -554,7 +554,7 @@ async fn run_logout(config: &Config, logout_args: LogoutArgs) -> Result<()> {
 
     let url = match &server.transport {
         McpServerTransportConfig::StreamableHttp { url, .. } => url.clone(),
-        _ => bail!("OAuth logout is only supported for streamable_http transports."),
+        _ => bail!("OAuth deauthorization is only supported for streamable_http transports."),
     };
     let credential_name = server.oauth_credential_name(&name);
 
@@ -659,7 +659,7 @@ async fn run_list(config: &Config, list_args: ListArgs) -> Result<()> {
     }
 
     if entries.is_empty() {
-        println!("No MCP servers configured yet. Try `codex mcp add my-tool -- my-command`.");
+        println!("No MCP servers configured yet. Try `redapto mcp add my-tool -- my-command`.");
         return Ok(());
     }
 
@@ -992,7 +992,7 @@ async fn run_get(config: &Config, get_args: GetArgs) -> Result<()> {
         };
         println!("  default_tools_approval_mode: {approval_mode}");
     }
-    println!("  remove: codex mcp remove {}", get_args.name);
+    println!("  remove: redapto mcp remove {}", get_args.name);
 
     Ok(())
 }

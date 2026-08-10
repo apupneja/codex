@@ -18,7 +18,7 @@ use crate::rmcp_client::DEFAULT_STARTUP_TIMEOUT;
 use crate::rmcp_client::StartupOutcomeError;
 use crate::server::EffectiveMcpServer;
 
-/// Makes ChatGPT authentication available to servers that explicitly opt in.
+/// Makes hosted-provider authentication available to servers that explicitly opt in.
 pub(super) fn chatgpt_auth_provider_for_server(
     server: &EffectiveMcpServer,
     chatgpt_auth_provider: Option<SharedAuthProvider>,
@@ -88,7 +88,7 @@ pub(super) fn mcp_init_error_display(
         && http_headers.as_ref().map(HashMap::is_empty).unwrap_or(true)
     {
         format!(
-            "GitHub MCP does not support OAuth. Log in by adding a personal access token (https://github.com/settings/personal-access-tokens) to your environment and config.toml:\n[mcp_servers.{server_name}]\nbearer_token_env_var = CODEX_GITHUB_PERSONAL_ACCESS_TOKEN"
+            "GitHub MCP does not support OAuth. Authorize it by adding a personal access token (https://github.com/settings/personal-access-tokens) to your environment and config.toml:\n[mcp_servers.{server_name}]\nbearer_token_env_var = REDAPTO_GITHUB_PERSONAL_ACCESS_TOKEN"
         )
     } else if error.is_authentication_required()
         || matches!(
@@ -97,11 +97,11 @@ pub(super) fn mcp_init_error_display(
         )
     {
         let recovery_hint = if config.is_some_and(|config| !config.is_local_environment()) {
-            "Use your client's MCP OAuth sign-in flow.".to_string()
+            "Use your client's MCP OAuth authorization flow.".to_string()
         } else {
-            format!("Run `codex mcp login {server_name}`.")
+            format!("Run `redapto mcp authorize {server_name}`.")
         };
-        format!("The {server_name} MCP server is not logged in. {recovery_hint}")
+        format!("The {server_name} MCP server requires authorization. {recovery_hint}")
     } else if matches!(
         error,
         StartupOutcomeError::Failed { error, .. }

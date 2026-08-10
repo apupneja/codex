@@ -3109,7 +3109,7 @@ async fn executor_owned_chatgpt_mcp_accepts_only_safe_explicit_authorization() -
         } else {
             assert_eq!(
                 error,
-                "executor-owned MCP server `fake-first-party` cannot use hosted ChatGPT authentication; configure executor-owned credentials instead",
+                "executor-owned MCP server `fake-first-party` cannot use hosted-provider authentication; configure executor-owned credentials instead",
                 "{case}: unsafe credentials must fail before contacting the executor"
             );
         }
@@ -3297,17 +3297,17 @@ fn mcp_init_error_display_prompts_for_github_pat() {
     let display = mcp_init_error_display(server_name, Some(&config), &err);
 
     let expected = format!(
-        "GitHub MCP does not support OAuth. Log in by adding a personal access token (https://github.com/settings/personal-access-tokens) to your environment and config.toml:\n[mcp_servers.{server_name}]\nbearer_token_env_var = CODEX_GITHUB_PERSONAL_ACCESS_TOKEN"
+        "GitHub MCP does not support OAuth. Authorize it by adding a personal access token (https://github.com/settings/personal-access-tokens) to your environment and config.toml:\n[mcp_servers.{server_name}]\nbearer_token_env_var = REDAPTO_GITHUB_PERSONAL_ACCESS_TOKEN"
     );
 
     assert_eq!(expected, display);
 }
 
 #[test]
-fn mcp_init_error_display_prompts_for_login_when_auth_required() {
+fn mcp_init_error_display_prompts_for_authorization_when_required() {
     let server_name = "example";
     let expected = format!(
-        "The {server_name} MCP server is not logged in. Run `codex mcp login {server_name}`."
+        "The {server_name} MCP server requires authorization. Run `redapto mcp authorize {server_name}`."
     );
     let executor_config: McpServerConfig = serde_json::from_value(serde_json::json!({
         "url": "https://example.com/mcp",
@@ -3328,7 +3328,7 @@ fn mcp_init_error_display_prompts_for_login_when_auth_required() {
         let executor_display = mcp_init_error_display(server_name, Some(&executor_config), &error);
         assert_eq!(
             format!(
-                "The {server_name} MCP server is not logged in. Use your client's MCP OAuth sign-in flow."
+                "The {server_name} MCP server requires authorization. Use your client's MCP OAuth authorization flow."
             ),
             executor_display
         );

@@ -123,7 +123,7 @@ pub const CONTEXT_WINDOW_OPEN_TAG: &str = "<context_window>";
 pub const CONTEXT_WINDOW_CLOSE_TAG: &str = "</context_window>";
 pub const CONTEXT_WINDOW_GUIDANCE_OPEN_TAG: &str = "<context_window_guidance>";
 pub const CONTEXT_WINDOW_GUIDANCE_CLOSE_TAG: &str = "</context_window_guidance>";
-pub const USER_MESSAGE_BEGIN: &str = "## My request for Codex:";
+pub const USER_MESSAGE_BEGIN: &str = "## My request for Redapto:";
 
 /// Removes the model-context prefix from a user message before displaying it.
 pub fn strip_user_message_prefix(text: &str) -> &str {
@@ -3807,7 +3807,7 @@ impl fmt::Display for McpAuthStatus {
         let text = match self {
             McpAuthStatus::Unknown => "Unknown",
             McpAuthStatus::Unsupported => "Unsupported",
-            McpAuthStatus::NotLoggedIn => "Not logged in",
+            McpAuthStatus::NotLoggedIn => "Not authorized",
             McpAuthStatus::BearerToken => "Bearer token",
             McpAuthStatus::OAuth => "OAuth",
         };

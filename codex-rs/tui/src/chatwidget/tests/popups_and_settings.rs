@@ -41,8 +41,8 @@ async fn experimental_mode_plan_is_ignored_on_startup() {
         workspace_command_runner: None,
         initial_user_message: None,
         enhanced_keys_supported: false,
-        has_chatgpt_account: false,
-        has_codex_backend_auth: false,
+        has_hosted_provider_account: false,
+        has_hosted_provider_auth: false,
         model_catalog: test_model_catalog(&cfg),
         feedback: codex_feedback::CodexFeedback::new(),
         is_first_run: true,
@@ -276,7 +276,7 @@ async fn plugins_popup_truncates_long_descriptions_in_list_rows() {
         .expect("expected verbose plugin row in popup");
     insta::assert_snapshot!(
         verbose_row,
-        @"  [-] Verbose Plugin  Available · OpenAI Curated · This description…"
+        @"  [-] Verbose Plugin  Available · Redapto Curated · This descriptio…"
     );
     assert!(
         !popup
@@ -777,7 +777,7 @@ async fn plugin_detail_popup_distinguishes_admin_installed_from_enabled() {
             .find(|line| line.contains("Figma ·"))
             .expect("expected plugin detail header")
             .trim(),
-        @"Figma · Enabled by Admin · ChatGPT Marketplace"
+        @"Figma · Enabled by Admin · Redapto Marketplace"
     );
 }
 
@@ -1041,7 +1041,7 @@ async fn plugin_detail_popup_shows_local_share_context_as_read_only_snapshot() {
             remote_plugin_id: "plugins~Plugin_docs".to_string(),
             remote_version: Some("7".to_string()),
             discoverability: Some(PluginShareDiscoverability::Private),
-            share_url: Some("https://chatgpt.com/codex/plugins/share/docs".to_string()),
+            share_url: Some("https://example.com/plugins/share/docs".to_string()),
             creator_account_user_id: None,
             creator_name: Some("Test User".to_string()),
             share_principals: None,
@@ -1111,7 +1111,7 @@ async fn plugin_detail_popup_shows_admin_disabled_status_snapshot() {
         .expect("expected admin-disabled status row");
     insta::assert_snapshot!(
         status_row,
-        @"  Admin Blocked · Disabled by admin · ChatGPT Marketplace"
+        @"  Admin Blocked · Disabled by admin · Redapto Marketplace"
     );
     assert!(
         popup.contains("This plugin is disabled by your workspace admin.")
@@ -1246,7 +1246,7 @@ async fn plugins_popup_remote_section_fallback_states_when_remote_plugin_disable
         ])),
     );
     let curated_loading_popup =
-        select_tab_containing(&mut chat, "Loading OpenAI Curated plugins...");
+        select_tab_containing(&mut chat, "Loading Redapto Curated plugins...");
     let workspace_loading_popup = select_tab_containing(&mut chat, "Loading Workspace plugins.");
     let shared_loading_popup = select_tab_containing(&mut chat, "Loading Shared with me plugins.");
     let _ = select_tab_containing(&mut chat, "Loading Workspace plugins.");
@@ -1265,7 +1265,7 @@ async fn plugins_popup_remote_section_fallback_states_when_remote_plugin_disable
         vec![crate::app_event::PluginRemoteSectionError {
             section_id: "workspace".to_string(),
             label: "Workspace".to_string(),
-            message: "Sign in to ChatGPT to load workspace plugins.".to_string(),
+            message: "Connect your provider to load workspace plugins.".to_string(),
         }],
     );
     let workspace_error_popup = select_tab_containing(&mut chat, "Workspace unavailable.");
@@ -1281,7 +1281,7 @@ async fn plugins_popup_remote_section_fallback_states_when_remote_plugin_disable
         ])),
     );
     let remote_curated_empty_popup =
-        select_tab_containing(&mut remote_chat, "No OpenAI Curated plugins available");
+        select_tab_containing(&mut remote_chat, "No Redapto Curated plugins available");
 
     insta::assert_snapshot!(
         [
@@ -1293,8 +1293,8 @@ async fn plugins_popup_remote_section_fallback_states_when_remote_plugin_disable
         ]
         .join("\n\n"),
         @r###"
-        OpenAI Curated marketplace.
-        Loading OpenAI Curated plugins...  This updates when OpenAI Curated plugins finish loading.
+        Redapto Curated marketplace.
+        Loading Redapto Curated plugins...  This updates when Redapto Curated plugins finish loading.
 
         Loading Workspace plugins.
         Loading Workspace plugins...  This updates when workspace plugins finish loading.
@@ -1303,10 +1303,10 @@ async fn plugins_popup_remote_section_fallback_states_when_remote_plugin_disable
         Loading Shared with me plugins...  This updates when shared plugins finish loading.
 
         Workspace unavailable.
-        Workspace unavailable  Sign in to ChatGPT to load workspace plugins.
+        Workspace unavailable  Connect your provider to load workspace plugins.
 
-        OpenAI Curated marketplace.
-        No OpenAI Curated plugins available  No OpenAI Curated plugins available.
+        Redapto Curated marketplace.
+        No Redapto Curated plugins available  No Redapto Curated plugins available.
         "###
     );
 }
@@ -1945,15 +1945,15 @@ async fn plugins_popup_openai_curated_tab_omits_marketplace_in_rows() {
 
     let popup = render_bottom_popup(&chat, /*width*/ 100);
     assert!(
-        popup.contains("OpenAI Curated marketplace."),
-        "expected OpenAI Curated tab header, got:\n{popup}"
+        popup.contains("Redapto Curated marketplace."),
+        "expected Redapto Curated tab header, got:\n{popup}"
     );
     assert!(
         popup.contains("Calendar") && !popup.contains("Repo Plugin"),
-        "expected OpenAI Curated tab to show only official marketplace plugins, got:\n{popup}"
+        "expected Redapto Curated tab to show only official marketplace plugins, got:\n{popup}"
     );
     assert!(
-        !popup.contains("ChatGPT Marketplace ·"),
+        !popup.contains("Redapto Marketplace ·"),
         "expected marketplace-specific rows to omit marketplace labels, got:\n{popup}"
     );
 }
@@ -3724,17 +3724,6 @@ async fn auto_model_advertising_advanced_effort_opens_reasoning_picker() {
             .iter()
             .any(|event| matches!(event, AppEvent::OpenReasoningPopup { .. }))
     );
-}
-
-#[tokio::test]
-async fn feedback_selection_popup_snapshot() {
-    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-
-    // Open the feedback category selection popup via slash command.
-    chat.dispatch_command(SlashCommand::Feedback);
-
-    let popup = render_bottom_popup(&chat, /*width*/ 80);
-    assert_chatwidget_snapshot!("feedback_selection_popup", popup);
 }
 
 #[tokio::test]

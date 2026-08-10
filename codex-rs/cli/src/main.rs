@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use clap::Args;
 use clap::CommandFactory;
 use clap::Parser;
@@ -10,15 +12,6 @@ use codex_arg0::Arg0DispatchPaths;
 use codex_arg0::arg0_dispatch_or_else;
 use codex_chatgpt::apply_command::ApplyCommand;
 use codex_chatgpt::apply_command::run_apply_command;
-use codex_cli::read_access_token_from_stdin;
-use codex_cli::read_api_key_from_stdin;
-use codex_cli::run_login_status;
-use codex_cli::run_login_with_access_token;
-use codex_cli::run_login_with_api_key;
-use codex_cli::run_login_with_chatgpt;
-use codex_cli::run_login_with_device_code;
-use codex_cli::run_logout;
-use codex_cloud_tasks::Cli as CloudTasksCli;
 use codex_exec::Cli as ExecCli;
 use codex_exec::Command as ExecCommand;
 use codex_exec::ReviewArgs;
@@ -30,7 +23,6 @@ use codex_state::StateRuntime;
 use codex_tui::AppExitInfo;
 use codex_tui::Cli as TuiCli;
 use codex_tui::ExitReason;
-use codex_tui::UpdateAction;
 use codex_utils_absolute_path::AbsolutePathBuf;
 use codex_utils_cli::CliConfigOverrides;
 use codex_utils_cli::ProfileV2Name;
@@ -43,11 +35,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use supports_color::Stream;
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-mod app_cmd;
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-mod desktop_app;
-mod doctor;
 mod exec_server_telemetry;
 mod marketplace_cmd;
 mod mcp_cmd;
@@ -57,14 +44,10 @@ mod remote_control_cmd;
 #[cfg(target_os = "windows")]
 mod sandbox_setup;
 mod state_db_recovery;
-#[cfg(not(windows))]
-mod wsl_paths;
-
 use crate::mcp_cmd::McpCli;
 use crate::plugin_cmd::PluginCli;
 use crate::plugin_cmd::PluginSubcommand;
 use crate::remote_control_cmd::RemoteControlCommand;
-use doctor::DoctorCommand;
 use state_db_recovery as local_state_db;
 
 use codex_config::LoaderOverrides;
@@ -89,23 +72,21 @@ use codex_protocol::protocol::AskForApproval;
 use codex_protocol::user_input::UserInput;
 use codex_terminal_detection::TerminalName;
 
-/// Codex CLI
+/// Redapto
 ///
 /// If no subcommand is specified, options will be forwarded to the interactive CLI.
 #[derive(Debug, Parser)]
 #[clap(
+    name = "redapto",
     author,
     version,
     // If a sub‑command is given, ignore requirements of the default args.
     subcommand_negates_reqs = true,
-    // The executable is sometimes invoked via a platform‑specific name like
-    // `codex-x86_64-unknown-linux-musl`, but the help output should always use
-    // the generic `codex` command name that users run.
-    bin_name = "codex",
-    override_usage = "codex [OPTIONS] [PROMPT]\n       codex [OPTIONS] <COMMAND> [ARGS]"
+    bin_name = "redapto",
+    override_usage = "redapto [OPTIONS] [PROMPT]\n       redapto [OPTIONS] <COMMAND> [ARGS]"
 )]
 struct MultitoolCli {
-    /// Enable process-only PSP routing for first-party ChatGPT requests.
+    /// Enable process-only routing for first-party provider requests.
     #[arg(long, global = true, hide = true)]
     psp: bool,
 
@@ -127,26 +108,20 @@ struct MultitoolCli {
 
 #[derive(Debug, clap::Subcommand)]
 enum Subcommand {
-    /// Run Codex non-interactively.
+    /// Run Redapto non-interactively.
     #[clap(visible_alias = "e")]
     Exec(ExecCli),
 
     /// Run a code review non-interactively.
     Review(ReviewCommand),
 
-    /// Manage login.
-    Login(LoginCommand),
-
-    /// Remove stored authentication credentials.
-    Logout(LogoutCommand),
-
-    /// Manage external MCP servers for Codex.
+    /// Manage external MCP servers for Redapto.
     Mcp(McpCli),
 
-    /// Manage Codex plugins.
+    /// Manage Redapto plugins.
     Plugin(PluginCli),
 
-    /// Start Codex as an MCP server (stdio).
+    /// Start Redapto as an MCP server (stdio).
     McpServer(McpServerCommand),
 
     /// [experimental] Run the app server or related tooling.
@@ -155,20 +130,10 @@ enum Subcommand {
     /// [experimental] Manage the app-server daemon with remote control enabled.
     RemoteControl(RemoteControlCommand),
 
-    /// Launch the Desktop app (opens the app installer if missing).
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    App(app_cmd::AppCommand),
-
     /// Generate shell completion scripts.
     Completion(CompletionCommand),
 
-    /// Update Codex to the latest version.
-    Update,
-
-    /// Diagnose local Codex installation, config, auth, and runtime health.
-    Doctor(DoctorCommand),
-
-    /// Run commands within a Codex-provided sandbox.
+    /// Run commands within a Redapto-provided sandbox.
     Sandbox(HostSandboxArgs),
 
     /// Debugging tools.
@@ -178,7 +143,7 @@ enum Subcommand {
     #[clap(hide = true)]
     Execpolicy(ExecpolicyCommand),
 
-    /// Apply the latest diff produced by Codex agent as a `git apply` to your local working tree.
+    /// Apply the latest diff produced by Redapto as a `git apply` to your local working tree.
     #[clap(visible_alias = "a")]
     Apply(ApplyCommand),
 
@@ -199,10 +164,6 @@ enum Subcommand {
 
     /// Fork a previous interactive session (picker by default; use --last to fork the most recent).
     Fork(ForkCommand),
-
-    /// [EXPERIMENTAL] Browse tasks from Codex Cloud and apply changes locally.
-    #[clap(name = "cloud", alias = "cloud-tasks")]
-    Cloud(CloudTasksCli),
 
     /// Internal: run the responses API proxy.
     #[clap(hide = true)]
@@ -290,7 +251,7 @@ struct DebugModelsCommand {
 
 #[derive(Debug, Parser)]
 struct ReviewCommand {
-    /// Error out when config.toml contains fields that are not recognized by this version of Codex.
+    /// Error out when config.toml contains fields that are not recognized by this version of Redapto.
     #[arg(long = "strict-config", default_value_t = false)]
     strict_config: bool,
 
@@ -300,7 +261,7 @@ struct ReviewCommand {
 
 #[derive(Debug, Parser)]
 struct McpServerCommand {
-    /// Error out when config.toml contains fields that are not recognized by this version of Codex.
+    /// Error out when config.toml contains fields that are not recognized by this version of Redapto.
     #[arg(long = "strict-config", default_value_t = false)]
     strict_config: bool,
 }
@@ -360,7 +321,7 @@ struct SessionArchiveConfigOverrides {
     #[clap(flatten)]
     shared: SharedCliOptions,
 
-    /// Error out when config.toml contains fields that are not recognized by this version of Codex.
+    /// Error out when config.toml contains fields that are not recognized by this version of Redapto.
     #[arg(long = "strict-config", default_value_t = false)]
     strict_config: bool,
 
@@ -439,7 +400,7 @@ type HostSandboxArgs = UnsupportedSandboxArgs;
 #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 #[derive(Debug, Parser)]
 struct UnsupportedSandboxArgs {
-    /// Layer $CODEX_HOME/<name>.config.toml on top of the base user config.
+    /// Layer $REDAPTO_HOME/<name>.config.toml on top of the base user config.
     #[arg(long = "profile", short = 'p')]
     pub config_profile: Option<ProfileV2Name>,
 
@@ -465,61 +426,6 @@ enum ExecpolicySubcommand {
 }
 
 #[derive(Debug, Parser)]
-struct LoginCommand {
-    #[clap(skip)]
-    config_overrides: CliConfigOverrides,
-
-    #[arg(
-        long = "with-api-key",
-        help = "Read the API key from stdin (e.g. `printenv OPENAI_API_KEY | codex login --with-api-key`)"
-    )]
-    with_api_key: bool,
-
-    #[arg(
-        long = "with-access-token",
-        help = "Read the access token from stdin (e.g. `printenv CODEX_ACCESS_TOKEN | codex login --with-access-token`)"
-    )]
-    with_access_token: bool,
-
-    #[arg(
-        long = "api-key",
-        num_args = 0..=1,
-        default_missing_value = "",
-        value_name = "API_KEY",
-        help = "(deprecated) Previously accepted the API key directly; now exits with guidance to use --with-api-key",
-        hide = true
-    )]
-    api_key: Option<String>,
-
-    #[arg(long = "device-auth")]
-    use_device_code: bool,
-
-    /// EXPERIMENTAL: Use custom OAuth issuer base URL (advanced)
-    /// Override the OAuth issuer base URL (advanced)
-    #[arg(long = "experimental_issuer", value_name = "URL", hide = true)]
-    issuer_base_url: Option<String>,
-
-    /// EXPERIMENTAL: Use custom OAuth client ID (advanced)
-    #[arg(long = "experimental_client-id", value_name = "CLIENT_ID", hide = true)]
-    client_id: Option<String>,
-
-    #[command(subcommand)]
-    action: Option<LoginSubcommand>,
-}
-
-#[derive(Debug, clap::Subcommand)]
-enum LoginSubcommand {
-    /// Show login status.
-    Status,
-}
-
-#[derive(Debug, Parser)]
-struct LogoutCommand {
-    #[clap(skip)]
-    config_overrides: CliConfigOverrides,
-}
-
-#[derive(Debug, Parser)]
 struct AppServerCommand {
     /// Omit to run the app server; specify a subcommand for tooling.
     #[command(subcommand)]
@@ -528,7 +434,7 @@ struct AppServerCommand {
     #[command(flatten)]
     code_mode_host: codex_app_server::AppServerCodeModeHostArgs,
 
-    /// Error out when config.toml contains fields that are not recognized by this version of Codex.
+    /// Error out when config.toml contains fields that are not recognized by this version of Redapto.
     #[arg(long = "strict-config", default_value_t = false)]
     strict_config: bool,
 
@@ -563,7 +469,6 @@ struct AppServerCommand {
     /// enabled = false
     /// ```
     ///
-    /// See https://developers.openai.com/codex/config-advanced/#metrics for more details.
     #[arg(long = "analytics-default-enabled")]
     analytics_default_enabled: bool,
 
@@ -573,7 +478,7 @@ struct AppServerCommand {
 
 #[derive(Debug, Parser)]
 struct ExecServerCommand {
-    /// Error out when config.toml contains fields that are not recognized by this version of Codex.
+    /// Error out when config.toml contains fields that are not recognized by this version of Redapto.
     #[arg(long = "strict-config", default_value_t = false)]
     strict_config: bool,
 
@@ -601,7 +506,7 @@ struct ExecServerCommand {
     #[arg(long = "name", value_name = "NAME")]
     name: Option<String>,
 
-    /// Use Agent Identity auth from CODEX_ACCESS_TOKEN for remote registration.
+    /// Use Agent Identity auth from REDAPTO_ACCESS_TOKEN for remote registration.
     #[arg(long = "use-agent-identity-auth", requires = "remote")]
     use_agent_identity_auth: bool,
 
@@ -629,7 +534,7 @@ enum AppServerSubcommand {
     /// [experimental] Generate JSON Schema for the app server protocol.
     GenerateJsonSchema(GenerateJsonSchemaCommand),
 
-    /// [internal] Generate internal JSON Schema artifacts for Codex tooling.
+    /// [internal] Generate internal JSON Schema artifacts for Redapto tooling.
     #[clap(hide = true)]
     GenerateInternalJsonSchema(GenerateInternalJsonSchemaCommand),
 }
@@ -755,7 +660,7 @@ fn format_exit_messages(exit_info: AppExitInfo, color_enabled: bool) -> Vec<Stri
     lines
 }
 
-/// Handle the app exit and print the results. Optionally run the update action.
+/// Handle the app exit and print the results.
 fn handle_app_exit(exit_info: AppExitInfo) -> anyhow::Result<()> {
     let is_fatal = match &exit_info.exit_reason {
         ExitReason::Fatal(message) => {
@@ -765,7 +670,6 @@ fn handle_app_exit(exit_info: AppExitInfo) -> anyhow::Result<()> {
         ExitReason::UserRequested => false,
     };
 
-    let update_action = exit_info.update_action;
     let color_enabled = supports_color::on(Stream::Stdout).is_some();
     for line in format_exit_messages(exit_info, color_enabled) {
         println!("{line}");
@@ -774,72 +678,7 @@ fn handle_app_exit(exit_info: AppExitInfo) -> anyhow::Result<()> {
         std::io::stdout().flush()?;
         std::process::exit(1);
     }
-    if let Some(action) = update_action {
-        run_update_action(action)?;
-    }
     Ok(())
-}
-
-/// Run the update action and print the result.
-fn run_update_action(action: UpdateAction) -> anyhow::Result<()> {
-    println!();
-    let cmd_str = action.command_str();
-    println!("Updating Codex via `{cmd_str}`...");
-
-    let status = {
-        #[cfg(windows)]
-        {
-            if action == UpdateAction::StandaloneWindows {
-                let (cmd, args) = action.command_args();
-                // Run the standalone PowerShell installer with PowerShell
-                // itself. Routing this through `cmd.exe /C` would parse
-                // PowerShell metacharacters like `|` before PowerShell sees
-                // the installer command.
-                std::process::Command::new(cmd).args(args).status()?
-            } else {
-                // On Windows, run via cmd.exe so .CMD/.BAT are correctly resolved (PATHEXT semantics).
-                std::process::Command::new("cmd")
-                    .args(["/C", &cmd_str])
-                    .status()?
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            let (cmd, args) = action.command_args();
-            let command_path = crate::wsl_paths::normalize_for_wsl(cmd);
-            let normalized_args: Vec<String> = args
-                .iter()
-                .map(crate::wsl_paths::normalize_for_wsl)
-                .collect();
-            std::process::Command::new(&command_path)
-                .args(&normalized_args)
-                .status()?
-        }
-    };
-    if !status.success() {
-        anyhow::bail!("`{cmd_str}` failed with status {status}");
-    }
-    println!("\n🎉 Update ran successfully! Please restart Codex.");
-    Ok(())
-}
-
-fn run_update_command() -> anyhow::Result<()> {
-    #[cfg(debug_assertions)]
-    {
-        anyhow::bail!(
-            "`codex update` is not available in debug builds. Install a release build of Codex to use this command."
-        );
-    }
-
-    #[cfg(not(debug_assertions))]
-    {
-        let Some(action) = codex_tui::get_update_action() else {
-            anyhow::bail!(
-                "Could not detect the Codex installation method. Please update manually: https://developers.openai.com/codex/cli/"
-            );
-        };
-        run_update_action(action)
-    }
 }
 
 fn run_execpolicycheck(cmd: ExecPolicyCheckCommand) -> anyhow::Result<()> {
@@ -1057,7 +896,7 @@ async fn cli_main(
                 root_remote_auth_token_env.as_deref(),
                 "review",
             )?;
-            let mut exec_cli = ExecCli::try_parse_from(["codex", "exec"])?;
+            let mut exec_cli = ExecCli::try_parse_from(["redapto", "exec"])?;
             exec_cli
                 .shared
                 .inherit_exec_root_options(&interactive.shared);
@@ -1278,15 +1117,6 @@ async fn cli_main(
             )
             .await?;
         }
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
-        Some(Subcommand::App(app_cli)) => {
-            reject_remote_mode_for_subcommand(
-                root_remote.as_deref(),
-                root_remote_auth_token_env.as_deref(),
-                "app",
-            )?;
-            app_cmd::run_app(app_cli).await?;
-        }
         Some(Subcommand::Resume(ResumeCommand {
             session_id,
             last,
@@ -1391,62 +1221,6 @@ async fn cli_main(
             .await?;
             handle_app_exit(exit_info)?;
         }
-        Some(Subcommand::Login(mut login_cli)) => {
-            reject_remote_mode_for_subcommand(
-                root_remote.as_deref(),
-                root_remote_auth_token_env.as_deref(),
-                "login",
-            )?;
-            prepend_config_flags(
-                &mut login_cli.config_overrides,
-                root_config_overrides.clone(),
-            );
-            match login_cli.action {
-                Some(LoginSubcommand::Status) => {
-                    run_login_status(login_cli.config_overrides).await;
-                }
-                None => {
-                    if login_cli.with_api_key && login_cli.with_access_token {
-                        eprintln!(
-                            "Choose one login credential source: --with-api-key or --with-access-token."
-                        );
-                        std::process::exit(1);
-                    } else if login_cli.use_device_code {
-                        run_login_with_device_code(
-                            login_cli.config_overrides,
-                            login_cli.issuer_base_url,
-                            login_cli.client_id,
-                        )
-                        .await;
-                    } else if login_cli.api_key.is_some() {
-                        eprintln!(
-                            "The --api-key flag is no longer supported. Pipe the key instead, e.g. `printenv OPENAI_API_KEY | codex login --with-api-key`."
-                        );
-                        std::process::exit(1);
-                    } else if login_cli.with_api_key {
-                        let api_key = read_api_key_from_stdin();
-                        run_login_with_api_key(login_cli.config_overrides, api_key).await;
-                    } else if login_cli.with_access_token {
-                        let access_token = read_access_token_from_stdin();
-                        run_login_with_access_token(login_cli.config_overrides, access_token).await;
-                    } else {
-                        run_login_with_chatgpt(login_cli.config_overrides).await;
-                    }
-                }
-            }
-        }
-        Some(Subcommand::Logout(mut logout_cli)) => {
-            reject_remote_mode_for_subcommand(
-                root_remote.as_deref(),
-                root_remote_auth_token_env.as_deref(),
-                "logout",
-            )?;
-            prepend_config_flags(
-                &mut logout_cli.config_overrides,
-                root_config_overrides.clone(),
-            );
-            run_logout(logout_cli.config_overrides).await;
-        }
         Some(Subcommand::Completion(completion_cli)) => {
             reject_remote_mode_for_subcommand(
                 root_remote.as_deref(),
@@ -1454,41 +1228,6 @@ async fn cli_main(
                 "completion",
             )?;
             print_completion(completion_cli);
-        }
-        Some(Subcommand::Update) => {
-            reject_remote_mode_for_subcommand(
-                root_remote.as_deref(),
-                root_remote_auth_token_env.as_deref(),
-                "update",
-            )?;
-            run_update_command()?;
-        }
-        Some(Subcommand::Doctor(doctor_cli)) => {
-            reject_remote_mode_for_subcommand(
-                root_remote.as_deref(),
-                root_remote_auth_token_env.as_deref(),
-                "doctor",
-            )?;
-            doctor::run_doctor(
-                doctor_cli,
-                root_config_overrides.clone(),
-                &interactive,
-                &arg0_paths,
-            )
-            .await?;
-        }
-        Some(Subcommand::Cloud(mut cloud_cli)) => {
-            reject_remote_mode_for_subcommand(
-                root_remote.as_deref(),
-                root_remote_auth_token_env.as_deref(),
-                "cloud",
-            )?;
-            prepend_config_flags(
-                &mut cloud_cli.config_overrides,
-                root_config_overrides.clone(),
-            );
-            codex_cloud_tasks::run_main(cloud_cli, arg0_paths.codex_linux_sandbox_exe.clone())
-                .await?;
         }
         Some(Subcommand::Sandbox(mut sandbox_cli)) => {
             let config_profile = sandbox_cli
@@ -1543,7 +1282,7 @@ async fn cli_main(
             #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
             {
                 let _ = loader_overrides;
-                anyhow::bail!("`codex sandbox` is not supported on this operating system");
+                anyhow::bail!("`redapto sandbox` is not supported on this operating system");
             }
         }
         Some(Subcommand::Debug(DebugCommand { subcommand })) => match subcommand {
@@ -1728,7 +1467,7 @@ fn profile_v2_for_subcommand<'a>(
             subcommand: DebugSubcommand::PromptInput(_),
         }) => Ok(Some(profile_v2)),
         _ => anyhow::bail!(
-            "--profile only applies to runtime commands and `codex mcp`: `codex`, `codex exec`, `codex review`, `codex resume`, `codex archive`, `codex delete`, `codex unarchive`, `codex fork`, `codex mcp`, `codex sandbox`, and `codex debug prompt-input`."
+            "--profile only applies to runtime commands and `redapto mcp`: `redapto`, `redapto exec`, `redapto review`, `redapto resume`, `redapto archive`, `redapto delete`, `redapto unarchive`, `redapto fork`, `redapto mcp`, `redapto sandbox`, and `redapto debug prompt-input`."
         ),
     }
 }
@@ -1742,7 +1481,7 @@ async fn run_exec_server_command(
     let codex_self_exe = arg0_paths
         .codex_self_exe
         .clone()
-        .ok_or_else(|| anyhow::anyhow!("Codex executable path is not configured"))?;
+        .ok_or_else(|| anyhow::anyhow!("Redapto executable path is not configured"))?;
     let runtime_paths = codex_exec_server::ExecServerRuntimePaths::new(
         codex_self_exe,
         arg0_paths.codex_linux_sandbox_exe.clone(),
@@ -1834,7 +1573,9 @@ async fn load_exec_server_remote_auth_provider(
 ) -> anyhow::Result<codex_api::SharedAuthProvider> {
     if use_agent_identity_auth {
         read_codex_access_token_from_env().ok_or_else(|| {
-            anyhow::anyhow!("CODEX_ACCESS_TOKEN is required when --use-agent-identity-auth is set")
+            anyhow::anyhow!(
+                "REDAPTO_ACCESS_TOKEN is required when --use-agent-identity-auth is set"
+            )
         })?;
         let auth = AuthManager::shared_from_config(config, /*enable_codex_api_key_env*/ false)
             .await
@@ -1843,7 +1584,7 @@ async fn load_exec_server_remote_auth_provider(
             .ok_or_else(|| anyhow::anyhow!("Agent Identity authentication is unavailable"))?;
         if !matches!(auth, CodexAuth::AgentIdentity(_)) {
             anyhow::bail!(
-                "CODEX_ACCESS_TOKEN did not provide permitted Agent Identity authentication"
+                "REDAPTO_ACCESS_TOKEN did not provide permitted Agent Identity authentication"
             );
         }
         return Ok(codex_model_provider::auth_provider_from_auth(&auth));
@@ -1851,13 +1592,13 @@ async fn load_exec_server_remote_auth_provider(
 
     let auth = load_exec_server_remote_auth(
         config,
-        "remote exec-server registration requires ChatGPT authentication or API key authentication; run `codex login` or set CODEX_API_KEY",
+        "remote exec-server registration requires a provider API key; set REDAPTO_API_KEY",
     )
     .await?;
 
     if !is_supported_exec_server_remote_auth(&auth) {
         anyhow::bail!(
-            "remote exec-server registration requires ChatGPT authentication or API key authentication; Agent Identity auth requires --use-agent-identity-auth"
+            "remote exec-server registration requires a provider API key; Agent Identity auth requires --use-agent-identity-auth"
         );
     }
 
@@ -1884,22 +1625,15 @@ fn validate_api_key_remote_host(base_url: &str) -> anyhow::Result<()> {
         url::Host::Ipv4(ip) => ip.is_loopback(),
         url::Host::Ipv6(ip) => ip.is_loopback(),
     };
-    let is_openai_host = match &host {
-        url::Host::Domain(host) => ["openai.com", "openai.org"].into_iter().any(|domain| {
-            host.eq_ignore_ascii_case(domain)
-                || host.to_ascii_lowercase().ends_with(&format!(".{domain}"))
-        }),
-        _ => false,
-    };
     let is_allowed = match url.scheme() {
-        "https" => is_loopback || is_openai_host,
+        "https" => true,
         "http" => is_loopback,
         _ => false,
     };
 
     if !is_allowed {
         anyhow::bail!(
-            "remote exec-server API-key authentication is restricted to HTTPS openai.com and openai.org hosts and subdomains or loopback hosts"
+            "remote exec-server API-key authentication requires HTTPS, except for loopback hosts"
         );
     }
 
@@ -2196,12 +1930,12 @@ fn reject_remote_mode_for_subcommand(
 ) -> anyhow::Result<()> {
     if let Some(remote) = remote {
         anyhow::bail!(
-            "`--remote {remote}` is only supported for interactive TUI commands, not `codex {subcommand}`"
+            "`--remote {remote}` is only supported for interactive TUI commands, not `redapto {subcommand}`"
         );
     }
     if remote_auth_token_env.is_some() {
         anyhow::bail!(
-            "`--remote-auth-token-env` is only supported for interactive TUI commands, not `codex {subcommand}`"
+            "`--remote-auth-token-env` is only supported for interactive TUI commands, not `redapto {subcommand}`"
         );
     }
     Ok(())
@@ -2248,8 +1982,7 @@ fn unsupported_subcommand_name_for_strict_config(
         | Some(Subcommand::Archive(_))
         | Some(Subcommand::Delete(_))
         | Some(Subcommand::Unarchive(_))
-        | Some(Subcommand::Fork(_))
-        | Some(Subcommand::Doctor(_)) => None,
+        | Some(Subcommand::Fork(_)) => None,
         Some(Subcommand::AppServer(app_server)) if app_server.subcommand.is_none() => None,
         Some(Subcommand::AppServer(app_server)) => {
             Some(app_server_subcommand_name(app_server.subcommand.as_ref()))
@@ -2258,13 +1991,7 @@ fn unsupported_subcommand_name_for_strict_config(
         Some(Subcommand::Mcp(_)) => Some("mcp"),
         Some(Subcommand::Plugin(_)) => Some("plugin"),
         Some(Subcommand::MigrateRollouts(_)) => Some("migrate-rollouts"),
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
-        Some(Subcommand::App(_)) => Some("app"),
-        Some(Subcommand::Login(_)) => Some("login"),
-        Some(Subcommand::Logout(_)) => Some("logout"),
         Some(Subcommand::Completion(_)) => Some("completion"),
-        Some(Subcommand::Update) => Some("update"),
-        Some(Subcommand::Cloud(_)) => Some("cloud"),
         Some(Subcommand::Sandbox(_)) => Some("sandbox"),
         Some(Subcommand::Debug(_)) => Some("debug"),
         Some(Subcommand::Execpolicy(_)) => Some("execpolicy"),
@@ -2293,7 +2020,7 @@ fn reject_strict_config_for_unsupported_subcommand(
     subcommand: &str,
 ) -> anyhow::Result<()> {
     if strict_config {
-        anyhow::bail!("`--strict-config` is not supported for `codex {subcommand}`");
+        anyhow::bail!("`--strict-config` is not supported for `redapto {subcommand}`");
     }
     Ok(())
 }
@@ -2401,7 +2128,7 @@ async fn run_interactive_tui(
         }
 
         eprintln!(
-            "WARNING: TERM is set to \"dumb\". Codex's interactive TUI may not work in this terminal."
+            "WARNING: TERM is set to \"dumb\". Redapto's interactive TUI may not work in this terminal."
         );
         if !confirm("Continue anyway? [y/N]: ")? {
             return Ok(AppExitInfo::fatal(
@@ -2453,7 +2180,7 @@ async fn run_interactive_tui(
             Err(backup_err) => {
                 local_state_db::print_diagnostic_guidance(startup_error);
                 return Ok(AppExitInfo::fatal(format!(
-                    "failed to move damaged Codex local database files into a backup folder automatically: {backup_err}"
+                    "failed to move damaged Redapto local database files into a backup folder automatically: {backup_err}"
                 )));
             }
         }
@@ -2509,7 +2236,7 @@ fn confirm(prompt: &str) -> std::io::Result<bool> {
     Ok(answer.eq_ignore_ascii_case("y") || answer.eq_ignore_ascii_case("yes"))
 }
 
-/// Build the final `TuiCli` for a `codex resume` invocation.
+/// Build the final `TuiCli` for a `redapto resume` invocation.
 fn finalize_resume_interactive(
     mut interactive: TuiCli,
     root_config_overrides: CliConfigOverrides,
@@ -2643,7 +2370,7 @@ fn merge_interactive_cli_flags(interactive: &mut TuiCli, subcommand_cli: TuiCli)
 
 fn print_completion(cmd: CompletionCommand) {
     let mut app = MultitoolCli::command();
-    let name = "codex";
+    let name = "redapto";
     generate(cmd.shell, &mut app, name, &mut std::io::stdout());
 }
 
@@ -2657,7 +2384,7 @@ mod tests {
 
     #[tokio::test]
     async fn updater_http_client_factory_honors_respect_system_proxy() {
-        let codex_home = tempfile::tempdir().expect("temporary Codex home");
+        let codex_home = tempfile::tempdir().expect("temporary Redapto home");
         let config = ConfigBuilder::default()
             .codex_home(codex_home.path().to_path_buf())
             .cli_overrides(vec![(
@@ -2691,12 +2418,10 @@ mod tests {
     }
 
     #[test]
-    fn exec_server_remote_api_key_auth_accepts_https_openai_domains() {
+    fn exec_server_remote_api_key_auth_accepts_https_domains() {
         for base_url in [
-            "https://openai.com/api",
-            "https://service.openai.com/api",
-            "https://openai.org/api",
-            "https://service.openai.org/api",
+            "https://provider.example/api",
+            "https://service.provider.example/api",
         ] {
             assert!(validate_api_key_remote_host(base_url).is_ok());
         }
@@ -2714,30 +2439,16 @@ mod tests {
     }
 
     #[test]
-    fn exec_server_remote_api_key_auth_rejects_http_openai_domain() {
-        for base_url in [
-            "http://service.openai.com/api",
-            "http://service.openai.org/api",
-        ] {
+    fn exec_server_remote_api_key_auth_rejects_http_non_loopback_domain() {
+        for base_url in ["http://provider.example/api", "http://service.example/api"] {
             let error = validate_api_key_remote_host(base_url)
-                .expect_err("reject plaintext OpenAI destination");
+                .expect_err("reject plaintext non-loopback destination");
 
             assert_eq!(
                 error.to_string(),
-                "remote exec-server API-key authentication is restricted to HTTPS openai.com and openai.org hosts and subdomains or loopback hosts"
+                "remote exec-server API-key authentication requires HTTPS, except for loopback hosts"
             );
         }
-    }
-
-    #[test]
-    fn exec_server_remote_api_key_auth_rejects_suffix_spoof() {
-        let error = validate_api_key_remote_host("https://service.openai.org.evil.example/api")
-            .expect_err("reject suffix spoof");
-
-        assert_eq!(
-            error.to_string(),
-            "remote exec-server API-key authentication is restricted to HTTPS openai.com and openai.org hosts and subdomains or loopback hosts"
-        );
     }
 
     fn finalize_resume_from_args(args: &[&str]) -> TuiCli {
@@ -3215,19 +2926,19 @@ mod tests {
 
     #[test]
     fn plugin_marketplace_help_uses_plugin_namespace() {
-        let help = help_from_args(&["codex", "plugin", "marketplace", "--help"]);
+        let help = help_from_args(&["redapto", "plugin", "marketplace", "--help"]);
         assert!(
-            help.contains("Usage: codex plugin marketplace [OPTIONS] <COMMAND>"),
+            help.contains("Usage: redapto plugin marketplace [OPTIONS] <COMMAND>"),
             "{help}"
         );
 
         for (subcommand, usage) in [
-            ("add", "Usage: codex plugin marketplace add"),
-            ("list", "Usage: codex plugin marketplace list"),
-            ("upgrade", "Usage: codex plugin marketplace upgrade"),
-            ("remove", "Usage: codex plugin marketplace remove"),
+            ("add", "Usage: redapto plugin marketplace add"),
+            ("list", "Usage: redapto plugin marketplace list"),
+            ("upgrade", "Usage: redapto plugin marketplace upgrade"),
+            ("remove", "Usage: redapto plugin marketplace remove"),
         ] {
-            let help = help_from_args(&["codex", "plugin", "marketplace", subcommand, "--help"]);
+            let help = help_from_args(&["redapto", "plugin", "marketplace", subcommand, "--help"]);
             assert!(help.contains(usage), "{help}");
         }
     }
@@ -3287,12 +2998,6 @@ mod tests {
         .expect("parse");
 
         assert!(matches!(cli.subcommand, Some(Subcommand::Plugin(_))));
-    }
-
-    #[test]
-    fn update_parses_as_update_subcommand() {
-        let cli = MultitoolCli::try_parse_from(["codex", "update"]).expect("parse");
-        assert!(matches!(cli.subcommand, Some(Subcommand::Update)));
     }
 
     #[test]
@@ -3468,7 +3173,6 @@ mod tests {
             token_usage,
             thread_id,
             resume_hint: codex_utils_cli::resume_hint(thread_name, thread_id),
-            update_action: None,
             exit_reason: ExitReason::UserRequested,
         }
     }
@@ -3479,7 +3183,6 @@ mod tests {
             token_usage: TokenUsage::default(),
             thread_id: None,
             resume_hint: None,
-            update_action: None,
             exit_reason: ExitReason::UserRequested,
         };
         let lines = format_exit_messages(exit_info, /*color_enabled*/ false);
@@ -3492,7 +3195,6 @@ mod tests {
             token_usage: TokenUsage::default(),
             thread_id: Some(ThreadId::from_string("123e4567-e89b-12d3-a456-426614174000").unwrap()),
             resume_hint: None,
-            update_action: None,
             exit_reason: ExitReason::Fatal("boom".to_string()),
         };
         let lines = format_exit_messages(exit_info, /*color_enabled*/ false);
@@ -3514,7 +3216,7 @@ mod tests {
             lines,
             vec![
                 "Token usage: total=2 input=0 output=2".to_string(),
-                "To continue this session, run codex resume 123e4567-e89b-12d3-a456-426614174000"
+                "To continue this session, run redapto resume 123e4567-e89b-12d3-a456-426614174000"
                     .to_string(),
             ]
         );
@@ -3531,7 +3233,7 @@ mod tests {
             lines,
             vec![
                 "Token usage: total=2 input=0 output=2".to_string(),
-                "To continue this session, run codex resume 123e4567-e89b-12d3-a456-426614174000"
+                "To continue this session, run redapto resume 123e4567-e89b-12d3-a456-426614174000"
                     .to_string(),
             ]
         );
@@ -3559,7 +3261,7 @@ mod tests {
             lines,
             vec![
                 "Token usage: total=2 input=0 output=2".to_string(),
-                "To continue this session, run codex resume, then select my-thread (123e4567-e89b-12d3-a456-426614174000)".to_string(),
+                "To continue this session, run redapto resume, then select my-thread (123e4567-e89b-12d3-a456-426614174000)".to_string(),
             ]
         );
     }
@@ -3887,7 +3589,7 @@ mod tests {
 
         assert_eq!(
             err.to_string(),
-            "`--strict-config` is not supported for `codex mcp`"
+            "`--strict-config` is not supported for `redapto mcp`"
         );
 
         let cli = MultitoolCli::try_parse_from(["codex", "--strict-config", "remote-control"])
@@ -3900,7 +3602,7 @@ mod tests {
 
         assert_eq!(
             err.to_string(),
-            "`--strict-config` is not supported for `codex remote-control`"
+            "`--strict-config` is not supported for `redapto remote-control`"
         );
     }
 
@@ -3916,7 +3618,7 @@ mod tests {
 
         assert_eq!(
             err.to_string(),
-            "`--strict-config` is not supported for `codex app-server proxy`"
+            "`--strict-config` is not supported for `redapto app-server proxy`"
         );
     }
 

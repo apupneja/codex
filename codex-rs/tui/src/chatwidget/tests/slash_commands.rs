@@ -1240,7 +1240,7 @@ async fn usage_error_slash_command_is_available_from_local_recall() {
 }
 
 #[tokio::test]
-async fn signed_out_usage_command_reports_chatgpt_login_requirement() {
+async fn disconnected_usage_command_reports_unavailable_message() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
     submit_composer_text(&mut chat, "/usage");
@@ -1252,14 +1252,14 @@ async fn signed_out_usage_command_reports_chatgpt_login_requirement() {
         .collect::<Vec<_>>()
         .join("\n");
     assert_chatwidget_snapshot!(
-        "signed_out_usage_command_reports_chatgpt_login_requirement",
+        "disconnected_usage_command_reports_unavailable_message",
         rendered
     );
     assert_eq!(recall_latest_after_clearing(&mut chat), "/usage");
 }
 
 #[tokio::test]
-async fn signed_out_usage_command_with_args_reports_chatgpt_login_requirement() {
+async fn unavailable_usage_command_with_args_reports_connection_message() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
     submit_composer_text(&mut chat, "/usage weekly");
@@ -1271,8 +1271,8 @@ async fn signed_out_usage_command_with_args_reports_chatgpt_login_requirement() 
         .collect::<Vec<_>>()
         .join("\n");
     assert!(
-        rendered.contains("Sign in with ChatGPT to use /usage."),
-        "expected ChatGPT login requirement, got: {rendered:?}"
+        rendered.contains("Usage details are unavailable for this connection."),
+        "expected unavailable usage message, got: {rendered:?}"
     );
     assert_eq!(recall_latest_after_clearing(&mut chat), "/usage weekly");
 }
@@ -1294,25 +1294,25 @@ async fn usage_command_with_invalid_view_reports_usage_snapshot() {
 }
 
 #[tokio::test]
-async fn usage_command_runs_with_backend_auth_without_chatgpt_account_flag() {
+async fn usage_command_runs_with_backend_auth_without_hosted_account_flag() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.update_account_state(
         /*status_account_display*/ None, /*plan_type*/ None,
-        /*has_chatgpt_account*/ false, /*has_codex_backend_auth*/ true,
+        /*has_hosted_provider_account*/ false, /*has_hosted_provider_auth*/ true,
     );
 
     chat.dispatch_command_with_args(SlashCommand::Usage, "daily".to_string(), Vec::new());
 
     assert_matches!(rx.try_recv(), Ok(AppEvent::RefreshTokenActivity { .. }));
-    assert!(!chat.has_chatgpt_account());
+    assert!(!chat.has_hosted_provider_account());
 }
 
 #[tokio::test]
 async fn usage_command_runs_with_backend_auth_from_widget_init() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual_with_auth(
         /*model_override*/ None,
-        /*has_chatgpt_account*/ false,
-        /*has_codex_backend_auth*/ true,
+        /*has_hosted_provider_account*/ false,
+        /*has_hosted_provider_auth*/ true,
         FrameRequester::test_dummy(),
     )
     .await;
@@ -1320,8 +1320,8 @@ async fn usage_command_runs_with_backend_auth_from_widget_init() {
     chat.dispatch_command_with_args(SlashCommand::Usage, "daily".to_string(), Vec::new());
 
     assert_matches!(rx.try_recv(), Ok(AppEvent::RefreshTokenActivity { .. }));
-    assert!(!chat.has_chatgpt_account());
-    assert!(chat.has_codex_backend_auth());
+    assert!(!chat.has_hosted_provider_account());
+    assert!(chat.has_hosted_provider_auth());
 }
 
 #[tokio::test]
@@ -1360,13 +1360,13 @@ async fn account_state_change_discards_pending_token_activity_refresh() {
     assert!(chat.pending_token_activity_output().is_some());
 
     chat.update_account_state(
-        Some(crate::status::StatusAccountDisplay::ChatGpt {
+        Some(crate::status::StatusAccountDisplay::Provider {
             email: Some("new-account@example.com".to_string()),
             plan: None,
         }),
         /*plan_type*/ None,
-        /*has_chatgpt_account*/ true,
-        /*has_codex_backend_auth*/ true,
+        /*has_hosted_provider_account*/ true,
+        /*has_hosted_provider_auth*/ true,
     );
 
     assert!(chat.pending_token_activity_output().is_none());
@@ -1597,7 +1597,7 @@ async fn pending_token_activity_refresh_keeps_composer_visible_in_short_viewport
             .vt100()
             .screen()
             .contents()
-            .contains("Ask Codex to do anything")
+            .contains("Ask Redapto to do anything")
     );
 }
 
@@ -1692,15 +1692,6 @@ async fn slash_quit_requests_exit() {
     chat.dispatch_command(SlashCommand::Quit);
 
     assert_matches!(rx.try_recv(), Ok(AppEvent::Exit(ExitMode::ShutdownFirst)));
-}
-
-#[tokio::test]
-async fn slash_logout_requests_app_server_logout() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-
-    chat.dispatch_command(SlashCommand::Logout);
-
-    assert_matches!(rx.try_recv(), Ok(AppEvent::Logout));
 }
 
 #[tokio::test]
@@ -2602,36 +2593,6 @@ async fn slash_fork_with_name_requests_named_fork() {
         Ok(AppEvent::ForkCurrentSession {
             name: Some(name)
         }) if name == "Add User"
-    );
-}
-
-#[tokio::test]
-async fn slash_app_requests_desktop_handoff() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    let thread_id = ThreadId::new();
-    chat.thread_id = Some(thread_id);
-
-    chat.dispatch_command(SlashCommand::App);
-
-    assert_matches!(
-        rx.try_recv(),
-        Ok(AppEvent::OpenDesktopThread {
-            thread_id: actual_thread_id,
-        }) if actual_thread_id == thread_id
-    );
-}
-
-#[tokio::test]
-async fn slash_app_without_thread_id_shows_starting_error() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-
-    chat.dispatch_command(SlashCommand::App);
-
-    let cells = drain_insert_history(&mut rx);
-    assert_eq!(cells.len(), 1, "expected app startup error");
-    assert_chatwidget_snapshot!(
-        "slash_app_without_thread_id_shows_starting_error",
-        lines_to_single_string(&cells[0])
     );
 }
 

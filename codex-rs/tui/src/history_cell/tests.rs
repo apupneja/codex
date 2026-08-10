@@ -335,7 +335,7 @@ fn proposed_plan_cell_preserves_wrapped_table_web_links() {
 
 #[test]
 fn composite_cell_preserves_child_web_links() {
-    let destination = "https://chatgpt.com/codex/settings/usage";
+    let destination = "https://example.com/account/usage";
     let cell = CompositeHistoryCell::new(vec![
         Box::new(PlainHistoryCell::new(vec![Line::from("/status")])),
         Box::new(WebHyperlinkHistoryCell::new(vec![Line::from(destination)])),
@@ -353,8 +353,7 @@ fn composite_cell_preserves_child_web_links() {
 }
 
 #[test]
-fn empty_mcp_output_preserves_docs_hyperlink() {
-    let destination = "https://developers.openai.com/codex/mcp";
+fn empty_mcp_output_shows_local_help_command() {
     let cell: Box<dyn HistoryCell> = Box::new(empty_mcp_output());
 
     insta::assert_snapshot!(render_lines(&cell.display_lines(/*width*/ 80)).join("\n"), @r"
@@ -363,44 +362,8 @@ fn empty_mcp_output_preserves_docs_hyperlink() {
     🔌  MCP Tools
 
       • No MCP servers configured.
-        See the MCP docs to configure them.
+        Run `redapto mcp --help` to configure one.
     ");
-
-    let expected_link = vec![crate::terminal_hyperlinks::TerminalHyperlink::web(
-        /*columns*/ 12..20,
-        destination.to_string(),
-    )];
-    assert_eq!(
-        cell.display_hyperlink_lines(/*width*/ 80)[5].hyperlinks,
-        expected_link
-    );
-    assert_eq!(
-        cell.transcript_hyperlink_lines(/*width*/ 80)[5].hyperlinks,
-        expected_link
-    );
-
-    let area = Rect::new(0, 0, 80, 6);
-    let mut buf = Buffer::empty(area);
-    cell.render(area, &mut buf);
-    assert_eq!(
-        (0..39).map(|x| buf[(x, 5)].modifier).collect::<Vec<_>>(),
-        [
-            vec![Modifier::DIM; 12],
-            vec![Modifier::DIM | Modifier::UNDERLINED; 8],
-            vec![Modifier::DIM; 19],
-        ]
-        .concat()
-    );
-    let linked_text = area
-        .positions()
-        .filter_map(|position| {
-            let symbol = buf[position].symbol();
-            symbol
-                .contains(&format!("\x1b]8;;{destination}\x07"))
-                .then(|| crate::terminal_hyperlinks::strip_osc8(symbol))
-        })
-        .collect::<String>();
-    assert_eq!(linked_text, "MCP docs");
 }
 
 #[test]
@@ -839,7 +802,7 @@ fn error_event_bedrock_expired_signature_snapshot() {
         user_message: Some(
             "Amazon Bedrock rejected the request because its AWS signature has expired. \
 Refresh your AWS credentials and retry. If `AWS_BEARER_TOKEN_BEDROCK` is set, update or \
-unset it, then restart Codex"
+unset it, then restart Redapto"
                 .to_string(),
         ),
         url: Some("https://bedrock-mantle.us-east-2.api.aws/openai/v1/responses".to_string()),
@@ -1048,7 +1011,7 @@ fn prefixed_wrapped_history_cell_indents_wrapped_lines() {
     let summary = Line::from(vec![
         "You ".into(),
         "approved".bold(),
-        " codex to run ".into(),
+        " Redapto to run ".into(),
         "echo something really long to ensure wrapping happens".dim(),
         " this time".bold(),
     ]);
@@ -1057,8 +1020,8 @@ fn prefixed_wrapped_history_cell_indents_wrapped_lines() {
     assert_eq!(
         rendered,
         vec![
-            "✔ You approved codex to".to_string(),
-            "  run echo something".to_string(),
+            "✔ You approved Redapto".to_string(),
+            "  to run echo something".to_string(),
             "  really long to ensure".to_string(),
             "  wrapping happens this".to_string(),
             "  time".to_string(),
@@ -1183,33 +1146,6 @@ fn web_search_history_cell_snapshot() {
         },
     );
     let rendered = render_lines(&cell.display_lines(/*width*/ 64)).join("\n");
-
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn standalone_unix_update_available_history_cell_snapshot() {
-    let cell =
-        UpdateAvailableHistoryCell::new("9.9.9".to_string(), Some(UpdateAction::StandaloneUnix));
-    let rendered = render_lines(&cell.display_lines(/*width*/ 110)).join("\n");
-
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn standalone_windows_update_available_history_cell_snapshot() {
-    let cell =
-        UpdateAvailableHistoryCell::new("9.9.9".to_string(), Some(UpdateAction::StandaloneWindows));
-    let rendered = render_lines(&cell.display_lines(/*width*/ 110)).join("\n");
-
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn pnpm_update_available_history_cell_snapshot() {
-    let cell =
-        UpdateAvailableHistoryCell::new("9.9.9".to_string(), Some(UpdateAction::PnpmGlobalLatest));
-    let rendered = render_lines(&cell.display_lines(/*width*/ 110)).join("\n");
 
     insta::assert_snapshot!(rendered);
 }

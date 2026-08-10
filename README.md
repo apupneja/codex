@@ -1,81 +1,54 @@
-<p align="center"><strong>Codex CLI</strong> is a coding agent from OpenAI that runs locally on your computer.
-<p align="center">
-  <img src="https://github.com/openai/codex/blob/main/.github/codex-cli-splash.png" alt="Codex CLI splash" width="80%" />
-</p>
-</br>
-If you want Codex in your code editor (VS Code, Cursor, Windsurf), <a href="https://developers.openai.com/codex/ide">install in your IDE.</a>
-</br>If you want the desktop app experience, run <code>codex app</code> or visit <a href="https://chatgpt.com/codex?app-landing-page=true">the Codex App page</a>.
-</br>If you are looking for the <em>cloud-based agent</em> from OpenAI, <strong>Codex Web</strong>, go to <a href="https://chatgpt.com/codex">chatgpt.com/codex</a>.</p>
+# Redapto
 
----
+Redapto is a local coding agent for exploring repositories, editing code, running commands, and coordinating development workflows from the terminal.
 
-## Quickstart
+## Build from source
 
-### Installing and running Codex CLI
+Requirements:
 
-Run the following on Mac or Linux to install Codex CLI:
+- macOS 12+, Linux, or Windows 11 through WSL2
+- Rust and Cargo
+- `just`, DotSlash, and `cargo-nextest`
 
-```shell
-curl -fsSL https://chatgpt.com/codex/install.sh | sh
+Build the development binary:
+
+```bash
+cd codex-rs
+cargo build --bin redapto
 ```
 
-Run the following on Windows to install Codex CLI:
+Run the interactive terminal interface:
 
-```shell
-powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"
+```bash
+export REDAPTO_API_KEY="your-provider-key"
+./target/debug/redapto
 ```
 
-The standalone installers download from `https://releases.openai.com/codex` by default and fall back to GitHub Releases if a metadata or asset download is unavailable. To force GitHub Releases, set `CODEX_INSTALLER_USE_RELEASES_OPENAI_COM` to `false` (`0` and `no` are also accepted):
+Run a non-interactive task:
 
-```shell
-curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_INSTALLER_USE_RELEASES_OPENAI_COM=false sh
+```bash
+./target/debug/redapto exec "explain this codebase"
 ```
 
-```powershell
-$env:CODEX_INSTALLER_USE_RELEASES_OPENAI_COM='false'; irm https://chatgpt.com/codex/install.ps1 | iex
+Redapto stores user configuration and local state in `~/.redapto` by default. Set
+`REDAPTO_HOME` to use another existing directory. The legacy home variable is
+accepted as a compatibility fallback for existing installations.
+
+Built-in terminal pets are optional. To host them under Redapto, set
+`REDAPTO_PET_ASSET_BASE_URL` to the HTTPS directory containing the versioned
+spritesheets; custom pets remain local under `REDAPTO_HOME`.
+
+The downstream product name is Redapto. Some internal crate, protocol, and
+wire-format identifiers retain their upstream names temporarily for compatibility
+while the fork is separated from its original provider infrastructure.
+
+## Development
+
+```bash
+cd codex-rs
+just fmt
+just fix -p <crate-you-touched>
+just test -p <crate-you-touched>
 ```
-
-Codex CLI can also be installed via the following package managers:
-
-```shell
-# Install using npm
-npm install -g @openai/codex
-```
-
-```shell
-# Install using Homebrew
-brew install --cask codex
-```
-
-Then simply run `codex` to get started.
-
-<details>
-<summary>You can also go to the <a href="https://github.com/openai/codex/releases/latest">latest GitHub Release</a> and download the appropriate binary for your platform.</summary>
-
-Each GitHub Release contains many executables, but in practice, you likely want one of these:
-
-- macOS
-  - Apple Silicon/arm64: `codex-aarch64-apple-darwin.tar.gz`
-  - x86_64 (older Mac hardware): `codex-x86_64-apple-darwin.tar.gz`
-- Linux
-  - x86_64: `codex-x86_64-unknown-linux-musl.tar.gz`
-  - arm64: `codex-aarch64-unknown-linux-musl.tar.gz`
-
-Each archive contains a single entry with the platform baked into the name (e.g., `codex-x86_64-unknown-linux-musl`), so you likely want to rename it to `codex` after extracting it.
-
-</details>
-
-### Using Codex with your ChatGPT plan
-
-Run `codex` and select **Sign in with ChatGPT**. We recommend signing into your ChatGPT account to use Codex as part of your Plus, Pro, Business, Edu, or Enterprise plan. [Learn more about what's included in your ChatGPT plan](https://help.openai.com/en/articles/11369540-codex-in-chatgpt).
-
-You can also use Codex with an API key, but this requires [additional setup](https://developers.openai.com/codex/auth#sign-in-with-an-api-key).
-
-## Docs
-
-- [**Codex Documentation**](https://developers.openai.com/codex)
-- [**Contributing**](./docs/contributing.md)
-- [**Installing & building**](./docs/install.md)
-- [**Open source fund**](./docs/open-source-fund.md)
 
 This repository is licensed under the [Apache-2.0 License](LICENSE).

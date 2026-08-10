@@ -58,7 +58,7 @@ pub use local::LocalTomlLayerStack;
 pub use local::load_local_config_layers;
 
 #[cfg(unix)]
-const SYSTEM_CONFIG_TOML_FILE_UNIX: &str = "/etc/codex/config.toml";
+const SYSTEM_CONFIG_TOML_FILE_UNIX: &str = "/etc/redapto/config.toml";
 
 #[cfg(windows)]
 const DEFAULT_PROGRAM_DATA_DIR_WINDOWS: &str = r"C:\ProgramData";
@@ -90,8 +90,8 @@ async fn first_layer_config_error_from_entries(layers: &[ConfigLayerEntry]) -> O
 /// composed with config-style TOML merging plus field-specific handling for
 /// hooks, rules, deny-read permissions, and remote sandbox config:
 ///
-/// - system    `/etc/codex/requirements.toml` (Unix) or
-///   `%ProgramData%\OpenAI\Codex\requirements.toml` (Windows)
+/// - system    `/etc/redapto/requirements.toml` (Unix) or
+///   `%ProgramData%\Redapto\requirements.toml` (Windows)
 /// - cloud:    enterprise-managed cloud config bundle requirements
 /// - legacy:   managed_config.toml reinterpreted as requirements.toml
 /// - admin:    managed preferences (*)
@@ -102,19 +102,17 @@ async fn first_layer_config_error_from_entries(layers: &[ConfigLayerEntry]) -> O
 /// Configuration is built up from multiple layers in the following order:
 ///
 /// - admin:    managed preferences (*)
-/// - system    `/etc/codex/config.toml` (Unix) or
-///   `%ProgramData%\OpenAI\Codex\config.toml` (Windows)
+/// - system    `/etc/redapto/config.toml` (Unix) or
+///   `%ProgramData%\Redapto\config.toml` (Windows)
 /// - cloud     enterprise-managed cloud config bundle fragments
-/// - user      `${CODEX_HOME}/config.toml`
-/// - profile   `${CODEX_HOME}/<name>.config.toml`, when selected
+/// - user      `${REDAPTO_HOME}/config.toml`
+/// - profile   `${REDAPTO_HOME}/<name>.config.toml`, when selected
 /// - cwd       `${PWD}/config.toml` (loaded but disabled when the directory is untrusted)
 /// - tree      parent directories up to root looking for `./.codex/config.toml` (loaded but disabled when untrusted)
 /// - repo      `$(git rev-parse --show-toplevel)/.codex/config.toml` (loaded but disabled when untrusted)
 /// - runtime   e.g., --config flags, model selector in UI
 ///
 /// (*) Only available on macOS via managed device profiles.
-///
-/// See https://developers.openai.com/codex/security for details.
 ///
 /// When loading the config stack for a thread, there should be a `cwd`
 /// associated with it such that `cwd` should be `Some(...)`. Only for
@@ -284,7 +282,7 @@ pub async fn load_config_layers_state(
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!(
-                    "--profile `{active_user_profile}` cannot be used while {} contains legacy `profile = \"{active_user_profile}\"` or `[profiles.{active_user_profile}]` config; move those settings into {} and remove the legacy profile selector/table. See https://developers.openai.com/codex/config-advanced#profiles for more information.",
+                    "--profile `{active_user_profile}` cannot be used while {} contains legacy `profile = \"{active_user_profile}\"` or `[profiles.{active_user_profile}]` config; move those settings into {} and remove the legacy profile selector/table.",
                     base_user_file.as_path().display(),
                     active_user_file.as_path().display()
                 ),
@@ -667,7 +665,7 @@ pub async fn load_requirements_toml(
 
 #[cfg(unix)]
 fn system_requirements_toml_file() -> io::Result<AbsolutePathBuf> {
-    AbsolutePathBuf::from_absolute_path(Path::new("/etc/codex/requirements.toml"))
+    AbsolutePathBuf::from_absolute_path(Path::new("/etc/redapto/requirements.toml"))
 }
 
 #[cfg(windows)]
@@ -712,7 +710,7 @@ fn windows_codex_system_dir() -> PathBuf {
         );
         PathBuf::from(DEFAULT_PROGRAM_DATA_DIR_WINDOWS)
     });
-    program_data.join("OpenAI").join("Codex")
+    program_data.join("Redapto")
 }
 
 #[cfg(windows)]
@@ -1522,7 +1520,7 @@ async fn load_root_checkout_project_config(
     )
 }
 /// The legacy mechanism for specifying admin-enforced configuration is to read
-/// from a file like `/etc/codex/managed_config.toml` that has the same
+/// from a file like `/etc/redapto/managed_config.toml` that has the same
 /// structure as `config.toml` where fields like `approval_policy` can specify
 /// exactly one value rather than a list of allowed values.
 ///
@@ -1647,8 +1645,7 @@ foo = "xyzzy"
     fn windows_system_requirements_toml_file_uses_expected_suffix() {
         let expected = windows_program_data_dir_from_known_folder()
             .unwrap_or_else(|_| PathBuf::from(DEFAULT_PROGRAM_DATA_DIR_WINDOWS))
-            .join("OpenAI")
-            .join("Codex")
+            .join("Redapto")
             .join("requirements.toml");
         assert_eq!(
             windows_system_requirements_toml_file()
@@ -1660,7 +1657,7 @@ foo = "xyzzy"
             windows_system_requirements_toml_file()
                 .expect("requirements.toml path")
                 .as_path()
-                .ends_with(Path::new("OpenAI").join("Codex").join("requirements.toml"))
+                .ends_with(Path::new("Redapto").join("requirements.toml"))
         );
     }
 
@@ -1669,8 +1666,7 @@ foo = "xyzzy"
     fn windows_system_config_toml_file_uses_expected_suffix() {
         let expected = windows_program_data_dir_from_known_folder()
             .unwrap_or_else(|_| PathBuf::from(DEFAULT_PROGRAM_DATA_DIR_WINDOWS))
-            .join("OpenAI")
-            .join("Codex")
+            .join("Redapto")
             .join("config.toml");
         assert_eq!(
             windows_system_config_toml_file()
@@ -1682,7 +1678,7 @@ foo = "xyzzy"
             windows_system_config_toml_file()
                 .expect("config.toml path")
                 .as_path()
-                .ends_with(Path::new("OpenAI").join("Codex").join("config.toml"))
+                .ends_with(Path::new("Redapto").join("config.toml"))
         );
     }
 }

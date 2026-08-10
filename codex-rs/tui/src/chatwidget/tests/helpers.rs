@@ -153,8 +153,8 @@ pub(super) async fn make_chatwidget_manual(
 ) {
     make_chatwidget_manual_with_auth(
         model_override,
-        /*has_chatgpt_account*/ false,
-        /*has_codex_backend_auth*/ false,
+        /*has_hosted_provider_account*/ false,
+        /*has_hosted_provider_auth*/ false,
         FrameRequester::test_dummy(),
     )
     .await
@@ -162,8 +162,8 @@ pub(super) async fn make_chatwidget_manual(
 
 pub(super) async fn make_chatwidget_manual_with_auth(
     model_override: Option<&str>,
-    has_chatgpt_account: bool,
-    has_codex_backend_auth: bool,
+    has_hosted_provider_account: bool,
+    has_hosted_provider_auth: bool,
     frame_requester: FrameRequester,
 ) -> (
     ChatWidget,
@@ -189,8 +189,8 @@ pub(super) async fn make_chatwidget_manual_with_auth(
         workspace_command_runner: None,
         initial_user_message: None,
         enhanced_keys_supported: false,
-        has_chatgpt_account,
-        has_codex_backend_auth,
+        has_hosted_provider_account,
+        has_hosted_provider_auth,
         model_catalog,
         feedback: codex_feedback::CodexFeedback::new(),
         is_first_run: true,
@@ -248,8 +248,8 @@ pub(super) fn assert_no_submit_op(op_rx: &mut tokio::sync::mpsc::UnboundedReceiv
 }
 
 pub(crate) fn set_chatgpt_auth(chat: &mut ChatWidget) {
-    chat.has_chatgpt_account = true;
-    chat.has_codex_backend_auth = true;
+    chat.has_hosted_provider_account = true;
+    chat.has_hosted_provider_auth = true;
     chat.model_catalog = test_model_catalog(&chat.config);
 }
 
@@ -1420,9 +1420,9 @@ pub(super) fn plugins_test_curated_marketplace(
 ) -> PluginMarketplaceEntry {
     PluginMarketplaceEntry {
         name: OPENAI_CURATED_MARKETPLACE_NAME.to_string(),
-        path: Some(plugins_test_absolute_path("marketplaces/chatgpt")),
+        path: Some(plugins_test_absolute_path("marketplaces/redapto")),
         interface: Some(MarketplaceInterface {
-            display_name: Some("ChatGPT Marketplace".to_string()),
+            display_name: Some("Redapto Marketplace".to_string()),
         }),
         plugins,
     }
@@ -1480,8 +1480,8 @@ pub(super) fn plugins_test_detail(
     mcp_servers: &[&str],
 ) -> PluginDetail {
     PluginDetail {
-        marketplace_name: "ChatGPT Marketplace".to_string(),
-        marketplace_path: Some(plugins_test_absolute_path("marketplaces/chatgpt")),
+        marketplace_name: "Redapto Marketplace".to_string(),
+        marketplace_path: Some(plugins_test_absolute_path("marketplaces/redapto")),
         summary,
         share_url: None,
         description: description.map(str::to_string),

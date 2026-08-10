@@ -185,8 +185,7 @@ const MULTI_AGENT_ENABLE_TITLE: &str = "Enable subagents?";
 const MULTI_AGENT_ENABLE_YES: &str = "Yes, enable";
 const MULTI_AGENT_ENABLE_NO: &str = "Not now";
 const MULTI_AGENT_ENABLE_NOTICE: &str = "Subagents will be enabled in the next session.";
-const TRUSTED_ACCESS_FOR_CYBER_VERIFICATION_WARNING: &str = "Your conversations have multiple flags for possible cybersecurity risk. Responses may take longer because extra safety checks are on. To get authorized for security work, join the Trusted Access for Cyber program: https://chatgpt.com/cyber";
-const MEMORIES_DOC_URL: &str = "https://developers.openai.com/codex/memories";
+const TRUSTED_ACCESS_FOR_CYBER_VERIFICATION_WARNING: &str = "Your conversations have multiple flags for possible cybersecurity risk. Responses may take longer because extra safety checks are on. Contact your provider administrator if you need authorized access for security work.";
 const MEMORIES_ENABLE_TITLE: &str = "Enable memories?";
 const MEMORIES_ENABLE_YES: &str = "Yes, enable";
 const MEMORIES_ENABLE_NO: &str = "Not now";
@@ -503,8 +502,8 @@ pub(crate) struct ChatWidgetInit {
     pub(crate) workspace_command_runner: Option<WorkspaceCommandRunner>,
     pub(crate) initial_user_message: Option<UserMessage>,
     pub(crate) enhanced_keys_supported: bool,
-    pub(crate) has_chatgpt_account: bool,
-    pub(crate) has_codex_backend_auth: bool,
+    pub(crate) has_hosted_provider_account: bool,
+    pub(crate) has_hosted_provider_auth: bool,
     pub(crate) model_catalog: Arc<ModelCatalog>,
     pub(crate) feedback: codex_feedback::CodexFeedback,
     pub(crate) is_first_run: bool,
@@ -555,8 +554,8 @@ pub(crate) struct ChatWidget {
     current_collaboration_mode: CollaborationMode,
     /// The currently active collaboration mask, if any.
     active_collaboration_mask: Option<CollaborationModeMask>,
-    has_chatgpt_account: bool,
-    has_codex_backend_auth: bool,
+    has_hosted_provider_account: bool,
+    has_hosted_provider_auth: bool,
     model_catalog: Arc<ModelCatalog>,
     session_telemetry: SessionTelemetry,
     session_header: SessionHeader,
@@ -1127,10 +1126,6 @@ impl ChatWidget {
         self.bottom_pane.show_selection_view(SelectionViewParams {
             title: Some(MEMORIES_ENABLE_TITLE.to_string()),
             subtitle: Some("Memories are currently disabled in your config.".to_string()),
-            footer_note: Some(Line::from(vec![
-                "Learn more: ".dim(),
-                MEMORIES_DOC_URL.cyan().underlined(),
-            ])),
             footer_hint: Some(standard_popup_hint_line()),
             items,
             ..Default::default()
@@ -1348,7 +1343,7 @@ impl ChatWidget {
 
     /// Request a shutdown-first quit.
     ///
-    /// This is used for explicit quit commands (`/quit`, `/exit`, `/logout`) and for
+    /// This is used for explicit quit commands (`/quit`, `/exit`) and for
     /// the double-press Ctrl+C/Ctrl+D quit shortcut.
     fn request_quit_without_confirmation(&self) {
         self.app_event_tx
@@ -1976,7 +1971,7 @@ impl Drop for ChatWidget {
     }
 }
 
-const PLACEHOLDER: &str = "Ask Codex to do anything";
+const PLACEHOLDER: &str = "Ask Redapto to do anything";
 const SIDE_PLACEHOLDER: &str = "Ask a follow-up question";
 
 // Extract the first bold (Markdown) element in the form **...** from `s`.

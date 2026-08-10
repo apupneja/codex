@@ -341,9 +341,6 @@ pub(crate) enum AppEvent {
     /// background tasks, rollout flush, or child process cleanup).
     Exit(ExitMode),
 
-    /// Request app-server account logout, then exit after it succeeds.
-    Logout,
-
     /// Request to exit the application due to a fatal error.
     #[allow(dead_code)]
     FatalExitRequest(String),
@@ -496,11 +493,6 @@ pub(crate) enum AppEvent {
     /// Open the provided URL in the user's browser.
     OpenUrlInBrowser {
         url: String,
-    },
-
-    /// Open the current thread in Codex Desktop.
-    OpenDesktopThread {
-        thread_id: ThreadId,
     },
 
     /// Persist a pet selection and reload the ambient pet.
@@ -1071,6 +1063,7 @@ pub(crate) enum AppEvent {
     },
 
     /// Open the upload consent popup for feedback after selecting a category.
+    #[allow(dead_code)] // The Redapto feedback entry point is disabled for now.
     OpenFeedbackConsent {
         category: FeedbackCategory,
     },
@@ -1199,6 +1192,7 @@ pub(crate) enum ExitMode {
     Immediate,
 }
 
+#[allow(dead_code)] // Retained for app-server feedback protocol compatibility.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FeedbackCategory {
     BadResult,

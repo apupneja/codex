@@ -101,7 +101,8 @@ async fn app_server_cyber_policy_error_renders_dedicated_notice() {
     assert_eq!(cells.len(), 1);
     let rendered = lines_to_single_string(&cells[0]);
     assert!(rendered.contains("This content can't be shown"));
-    assert!(rendered.contains("extra caution with cybersecurity requests"));
+    assert!(rendered.contains("applies extra caution to cybersecurity requests"));
+    assert!(rendered.contains("provider administrator"));
     assert!(!rendered.contains("server fallback message"));
 }
 
@@ -119,8 +120,7 @@ async fn app_server_model_verification_renders_warning() {
     let rendered = lines_to_single_string(&cells[0]);
     assert!(rendered.contains("multiple flags for possible cybersecurity risk"));
     assert!(rendered.contains("extra safety checks are on"));
-    assert!(rendered.contains("Trusted Access for Cyber"));
-    assert!(rendered.contains("https://chatgpt.com/cyber"));
+    assert!(rendered.contains("provider administrator"));
 }
 
 #[tokio::test]
@@ -475,8 +475,8 @@ async fn configured_pet_load_is_deferred_until_after_construction() {
         workspace_command_runner: None,
         initial_user_message: None,
         enhanced_keys_supported: false,
-        has_chatgpt_account: false,
-        has_codex_backend_auth: false,
+        has_hosted_provider_account: false,
+        has_hosted_provider_auth: false,
         model_catalog: test_model_catalog(&cfg),
         feedback: codex_feedback::CodexFeedback::new(),
         is_first_run: true,
@@ -1032,7 +1032,7 @@ async fn rate_limit_snapshots_keep_separate_entries_per_limit_id() {
 #[tokio::test]
 async fn rate_limit_switch_prompt_skips_when_on_lower_cost_model() {
     let (mut chat, _, _) = make_chatwidget_manual(Some(NUDGE_MODEL_SLUG)).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     chat.on_rate_limit_snapshot(Some(snapshot(/*percent*/ 95.0)));
 
@@ -1045,7 +1045,7 @@ async fn rate_limit_switch_prompt_skips_when_on_lower_cost_model() {
 #[tokio::test]
 async fn rate_limit_switch_prompt_skips_non_codex_limit() {
     let (mut chat, _, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     chat.on_rate_limit_snapshot(Some(RateLimitSnapshot {
         limit_id: Some("codex_other".to_string()),
@@ -1130,7 +1130,7 @@ async fn rate_limit_usage_warnings_follow_workspace_credit_flags() {
         ),
     ] {
         let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-        chat.has_chatgpt_account = true;
+        chat.has_hosted_provider_account = true;
         let mut rate_limit_snapshot = snapshot(/*percent*/ 95.0);
         rate_limit_snapshot.credits = Some(credits);
 
@@ -1151,7 +1151,7 @@ async fn rate_limit_usage_warnings_follow_workspace_credit_flags() {
 #[tokio::test]
 async fn rate_limit_usage_warnings_show_when_authoritative_snapshot_clears_credits() {
     let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     let mut initial_snapshot = snapshot(/*percent*/ 0.0);
     initial_snapshot.credits = Some(CreditsSnapshot {
@@ -1176,7 +1176,7 @@ async fn rate_limit_usage_warnings_show_when_authoritative_snapshot_clears_credi
 #[tokio::test]
 async fn rate_limit_switch_prompt_clears_pending_when_workspace_credits_become_usable() {
     let (mut chat, _, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     chat.on_rate_limit_snapshot(Some(snapshot(/*percent*/ 95.0)));
     assert!(matches!(
@@ -1201,7 +1201,7 @@ async fn rate_limit_switch_prompt_clears_pending_when_workspace_credits_become_u
 #[tokio::test]
 async fn rate_limit_switch_prompt_dismisses_shown_when_workspace_credits_become_usable() {
     let (mut chat, _, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     chat.on_rate_limit_snapshot(Some(snapshot(/*percent*/ 95.0)));
     chat.maybe_show_pending_rate_limit_prompt();
@@ -1245,7 +1245,7 @@ async fn rate_limit_usage_warnings_preserve_workspace_limit_for_sparse_snapshots
         RateLimitReachedType::WorkspaceMemberUsageLimitReached,
     ] {
         let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-        chat.has_chatgpt_account = true;
+        chat.has_hosted_provider_account = true;
 
         let mut blocked_snapshot = snapshot(/*percent*/ 0.0);
         blocked_snapshot.credits = Some(CreditsSnapshot {
@@ -1310,7 +1310,7 @@ async fn rate_limit_usage_warnings_keep_workspace_limit_after_rolling_credits() 
             },
         ] {
             let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-            chat.has_chatgpt_account = true;
+            chat.has_hosted_provider_account = true;
 
             let mut blocked_snapshot = snapshot(/*percent*/ 0.0);
             blocked_snapshot.credits = Some(CreditsSnapshot {
@@ -1351,7 +1351,7 @@ async fn rate_limit_usage_warnings_keep_explicit_rolling_workspace_limit() {
     ] {
         for spend_control_reached in [None, Some(false)] {
             let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-            chat.has_chatgpt_account = true;
+            chat.has_hosted_provider_account = true;
 
             let mut rolling_snapshot = snapshot(/*percent*/ 95.0);
             rolling_snapshot.credits = Some(CreditsSnapshot {
@@ -1383,7 +1383,7 @@ async fn rate_limit_usage_warnings_keep_explicit_rolling_workspace_limit() {
 async fn rate_limit_usage_warnings_keep_newly_reached_workspace_limit() {
     for (limit_id, should_warn) in [("codex", true), ("codex_other", false)] {
         let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-        chat.has_chatgpt_account = true;
+        chat.has_hosted_provider_account = true;
 
         let mut initial_snapshot = snapshot(/*percent*/ 0.0);
         initial_snapshot.credits = Some(CreditsSnapshot {
@@ -1430,7 +1430,7 @@ async fn rate_limit_usage_warnings_keep_newly_reached_workspace_limit() {
 #[tokio::test]
 async fn rate_limit_usage_warnings_preserve_and_clear_spend_control_state() {
     let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     let mut blocked_snapshot = snapshot(/*percent*/ 0.0);
     blocked_snapshot.credits = Some(CreditsSnapshot {
@@ -1494,7 +1494,7 @@ async fn rate_limit_usage_warnings_preserve_and_clear_spend_control_state() {
 #[tokio::test]
 async fn rolling_credits_preserve_depleted_workspace_error_routing() {
     let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     let mut blocked_snapshot = snapshot(/*percent*/ 0.0);
     blocked_snapshot.rate_limit_reached_type =
@@ -1534,7 +1534,7 @@ async fn rolling_credits_preserve_depleted_workspace_error_routing() {
 #[tokio::test]
 async fn rate_limit_usage_warnings_clear_workspace_limit_from_authoritative_snapshot() {
     let (mut chat, mut rx, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     let mut blocked_snapshot = snapshot(/*percent*/ 0.0);
     blocked_snapshot.credits = Some(CreditsSnapshot {
@@ -1569,7 +1569,7 @@ async fn rate_limit_usage_warnings_clear_workspace_limit_from_authoritative_snap
 #[tokio::test]
 async fn rate_limit_switch_prompt_shows_once_per_session() {
     let (mut chat, _, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     chat.on_rate_limit_snapshot(Some(snapshot(/*percent*/ 90.0)));
     assert!(
@@ -1610,7 +1610,7 @@ async fn account_update_clears_derived_usage_limit_state_and_prompt() {
 
     chat.update_account_state(
         /*status_account_display*/ None, /*plan_type*/ None,
-        /*has_chatgpt_account*/ true, /*has_codex_backend_auth*/ true,
+        /*has_hosted_provider_account*/ true, /*has_hosted_provider_auth*/ true,
     );
 
     assert_eq!(chat.rate_limit_warnings.primary_index, 0);
@@ -1628,7 +1628,7 @@ async fn account_update_clears_derived_usage_limit_state_and_prompt() {
 #[tokio::test]
 async fn rate_limit_switch_prompt_respects_hidden_notice() {
     let (mut chat, _, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
     chat.config.notices.hide_rate_limit_model_nudge = Some(true);
 
     chat.on_rate_limit_snapshot(Some(snapshot(/*percent*/ 95.0)));
@@ -1642,7 +1642,7 @@ async fn rate_limit_switch_prompt_respects_hidden_notice() {
 #[tokio::test]
 async fn rate_limit_switch_prompt_defers_until_task_complete() {
     let (mut chat, _, _) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     chat.bottom_pane.set_task_running(/*running*/ true);
     chat.on_rate_limit_snapshot(Some(snapshot(/*percent*/ 90.0)));
@@ -1662,7 +1662,7 @@ async fn rate_limit_switch_prompt_defers_until_task_complete() {
 #[tokio::test]
 async fn rate_limit_switch_prompt_popup_snapshot() {
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.has_chatgpt_account = true;
+    chat.has_hosted_provider_account = true;
 
     chat.on_rate_limit_snapshot(Some(snapshot(/*percent*/ 92.0)));
     chat.maybe_show_pending_rate_limit_prompt();
@@ -1792,12 +1792,12 @@ async fn workspace_owner_limit_states_render_state_specific_messages() {
         (
             RateLimitReachedType::WorkspaceOwnerCreditsDepleted,
             RateLimitErrorKind::Generic,
-            "You're out of credits. Your workspace is out of credits. Add credits to continue using Codex.",
+            "You're out of credits. Your workspace is out of credits. Add credits to continue using Redapto.",
         ),
         (
             RateLimitReachedType::WorkspaceOwnerUsageLimitReached,
             RateLimitErrorKind::UsageLimit,
-            "Usage limit reached. You've reached your usage limit. Increase your limits to continue using codex.",
+            "Usage limit reached. You've reached your usage limit. Increase your limits to continue using Redapto.",
         ),
     ];
 
@@ -2884,7 +2884,7 @@ async fn account_update_clears_workspace_headline_state() {
 
     chat.update_account_state(
         /*status_account_display*/ None, /*plan_type*/ None,
-        /*has_chatgpt_account*/ false, /*has_codex_backend_auth*/ false,
+        /*has_hosted_provider_account*/ false, /*has_hosted_provider_auth*/ false,
     );
 
     assert_eq!(
@@ -2905,7 +2905,7 @@ async fn workspace_headline_fetch_allows_backend_auth_without_chatgpt_account() 
 
     chat.update_account_state(
         /*status_account_display*/ None, /*plan_type*/ None,
-        /*has_chatgpt_account*/ false, /*has_codex_backend_auth*/ true,
+        /*has_hosted_provider_account*/ false, /*has_hosted_provider_auth*/ true,
     );
 
     let request_id = take_workspace_headline_request_id(&mut rx);
@@ -2921,24 +2921,24 @@ async fn account_update_discards_stale_workspace_headline_results() {
     chat.config.tui_status_line = Some(vec!["workspace-headline".to_string()]);
 
     chat.update_account_state(
-        Some(StatusAccountDisplay::ChatGpt {
+        Some(StatusAccountDisplay::Provider {
             email: Some("first@example.com".to_string()),
             plan: None,
         }),
         /*plan_type*/ None,
-        /*has_chatgpt_account*/ true,
-        /*has_codex_backend_auth*/ true,
+        /*has_hosted_provider_account*/ true,
+        /*has_hosted_provider_auth*/ true,
     );
     let stale_request_id = take_workspace_headline_request_id(&mut rx);
 
     chat.update_account_state(
-        Some(StatusAccountDisplay::ChatGpt {
+        Some(StatusAccountDisplay::Provider {
             email: Some("second@example.com".to_string()),
             plan: None,
         }),
         /*plan_type*/ None,
-        /*has_chatgpt_account*/ true,
-        /*has_codex_backend_auth*/ true,
+        /*has_hosted_provider_account*/ true,
+        /*has_hosted_provider_auth*/ true,
     );
     let current_request_id = take_workspace_headline_request_id(&mut rx);
 
@@ -3836,8 +3836,8 @@ async fn newline_agent_delta_redraws_stream_tail_after_noop_catch_up() {
     let (frame_requester, mut draw_rx) = FrameRequester::test_channel();
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual_with_auth(
         /*model_override*/ None,
-        /*has_chatgpt_account*/ false,
-        /*has_codex_backend_auth*/ false,
+        /*has_hosted_provider_account*/ false,
+        /*has_hosted_provider_auth*/ false,
         frame_requester,
     )
     .await;
@@ -3861,8 +3861,8 @@ async fn newline_plan_delta_redraws_stream_tail_after_noop_catch_up() {
     let (frame_requester, mut draw_rx) = FrameRequester::test_channel();
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual_with_auth(
         /*model_override*/ Some("gpt-5"),
-        /*has_chatgpt_account*/ false,
-        /*has_codex_backend_auth*/ false,
+        /*has_hosted_provider_account*/ false,
+        /*has_hosted_provider_auth*/ false,
         frame_requester,
     )
     .await;
@@ -3938,8 +3938,8 @@ async fn reasoning_delta_does_not_double_schedule_visible_status_redraw() {
     let (frame_requester, mut draw_rx) = FrameRequester::test_channel();
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual_with_auth(
         /*model_override*/ None,
-        /*has_chatgpt_account*/ false,
-        /*has_codex_backend_auth*/ false,
+        /*has_hosted_provider_account*/ false,
+        /*has_hosted_provider_auth*/ false,
         frame_requester,
     )
     .await;

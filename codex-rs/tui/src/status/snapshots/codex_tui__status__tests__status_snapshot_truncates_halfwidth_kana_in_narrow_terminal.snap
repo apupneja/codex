@@ -5,12 +5,7 @@ expression: sanitized
 /status
 
 ╭────────────────────────────────────────╮
-│  >_ OpenAI Codex (v0.0.0)              │
-│                                        │
-│ Visit                                  │
-│ https://chatgpt.com/codex/settings/usa │
-│ for up-to-date                         │
-│ information on rate limits and credits │
+│  >_ Redapto (v0.0.0)                   │
 │                                        │
 │  Model:                ｶﾞﾊﾟｶﾞﾊﾟｶﾞﾊﾟｶﾞ  │
 │  Directory: [[workspace]]              │
@@ -20,5 +15,6 @@ expression: sanitized
 │  Thread name:          ｶﾞﾊﾟｶﾞﾊﾟｶﾞﾊﾟｶﾞ  │
 │  Collaboration mode:   ｶﾞﾊﾟ collaborat │
 │                                        │
+│  Token usage:          0 total  (0 inp │
 │  Limits:               data not availa │
 ╰────────────────────────────────────────╯

@@ -41,7 +41,6 @@ use codex_app_server_protocol::GetAccountParams;
 use codex_app_server_protocol::GetAccountRateLimitsResponse;
 use codex_app_server_protocol::GetAccountResponse;
 use codex_app_server_protocol::JSONRPCErrorError;
-use codex_app_server_protocol::LogoutAccountResponse;
 use codex_app_server_protocol::MemoryResetResponse;
 use codex_app_server_protocol::Model as ApiModel;
 use codex_app_server_protocol::ModelListParams;
@@ -250,12 +249,12 @@ pub(crate) struct AppServerBootstrap {
     pub(crate) status_account_display: Option<StatusAccountDisplay>,
     pub(crate) plan_type: Option<codex_protocol::account::PlanType>,
     /// Whether the configured model provider needs OpenAI-style auth. Combined
-    /// with `has_chatgpt_account` to decide if a startup rate-limit prefetch
+    /// with `has_hosted_provider_account` to decide if a startup rate-limit prefetch
     /// should be fired.
     pub(crate) requires_openai_auth: bool,
     pub(crate) default_model: String,
     pub(crate) feedback_audience: FeedbackAudience,
-    pub(crate) has_chatgpt_account: bool,
+    pub(crate) has_hosted_provider_account: bool,
     pub(crate) available_models: Vec<ModelPreset>,
 }
 
@@ -448,7 +447,7 @@ impl AppServerSession {
             status_account_display,
             plan_type,
             feedback_audience,
-            has_chatgpt_account,
+            has_hosted_provider_account,
         ) = match account.account {
             Some(Account::ApiKey {}) => (
                 None,
@@ -458,27 +457,17 @@ impl AppServerSession {
                 FeedbackAudience::External,
                 false,
             ),
-            Some(Account::Chatgpt { email, plan_type }) => {
-                let feedback_audience = if email
-                    .as_deref()
-                    .is_some_and(|email| email.ends_with("@openai.com"))
-                {
-                    FeedbackAudience::OpenAiEmployee
-                } else {
-                    FeedbackAudience::External
-                };
-                (
-                    email.clone(),
-                    Some(TelemetryAuthMode::Chatgpt),
-                    Some(StatusAccountDisplay::ChatGpt {
-                        email,
-                        plan: Some(plan_type_display_name(plan_type)),
-                    }),
-                    Some(plan_type),
-                    feedback_audience,
-                    true,
-                )
-            }
+            Some(Account::Chatgpt { plan_type, .. }) => (
+                None,
+                Some(TelemetryAuthMode::Chatgpt),
+                Some(StatusAccountDisplay::Provider {
+                    email: None,
+                    plan: Some(plan_type_display_name(plan_type)),
+                }),
+                Some(plan_type),
+                FeedbackAudience::External,
+                false,
+            ),
             Some(Account::AmazonBedrock { .. }) => {
                 (None, None, None, None, FeedbackAudience::External, false)
             }
@@ -493,7 +482,7 @@ impl AppServerSession {
             requires_openai_auth: account.requires_openai_auth,
             default_model,
             feedback_audience,
-            has_chatgpt_account,
+            has_hosted_provider_account,
             available_models,
         })
     }
@@ -504,8 +493,7 @@ impl AppServerSession {
 
     /// Fetches the current account info without refreshing the auth token.
     ///
-    /// Used by both `bootstrap` (to populate the initial UI) and `get_login_status`
-    /// (to check auth mode without the overhead of a full bootstrap).
+    /// Used by `bootstrap` to populate the initial UI.
     pub(crate) async fn read_account(&mut self) -> Result<GetAccountResponse> {
         let account_request_id = self.next_request_id();
         self.client
@@ -1285,19 +1273,6 @@ impl AppServerSession {
             .wrap_err("thread/goal/clear failed in TUI")
     }
 
-    pub(crate) async fn logout_account(&mut self) -> Result<()> {
-        let request_id = self.next_request_id();
-        let _: LogoutAccountResponse = self
-            .client
-            .request_typed(ClientRequest::LogoutAccount {
-                request_id,
-                params: None,
-            })
-            .await
-            .wrap_err("account/logout failed in TUI")?;
-        Ok(())
-    }
-
     pub(crate) async fn thread_unsubscribe(&mut self, thread_id: ThreadId) -> Result<()> {
         let request_id = self.next_request_id();
         let _: ThreadUnsubscribeResponse = self
@@ -1497,7 +1472,7 @@ pub(crate) fn status_account_display_from_auth_mode(
         Some(AuthMode::Chatgpt)
         | Some(AuthMode::ChatgptAuthTokens)
         | Some(AuthMode::AgentIdentity)
-        | Some(AuthMode::PersonalAccessToken) => Some(StatusAccountDisplay::ChatGpt {
+        | Some(AuthMode::PersonalAccessToken) => Some(StatusAccountDisplay::Provider {
             email: None,
             plan: plan_type.map(plan_type_display_name),
         }),
@@ -3340,7 +3315,7 @@ mod tests {
         );
         assert!(matches!(
             business,
-            Some(StatusAccountDisplay::ChatGpt {
+            Some(StatusAccountDisplay::Provider {
                 email: None,
                 plan: Some(ref plan),
             }) if plan == "Enterprise"
@@ -3352,7 +3327,7 @@ mod tests {
         );
         assert!(matches!(
             team,
-            Some(StatusAccountDisplay::ChatGpt {
+            Some(StatusAccountDisplay::Provider {
                 email: None,
                 plan: Some(ref plan),
             }) if plan == "Business"
@@ -3364,7 +3339,7 @@ mod tests {
         );
         assert!(matches!(
             business_prolite,
-            Some(StatusAccountDisplay::ChatGpt {
+            Some(StatusAccountDisplay::Provider {
                 email: None,
                 plan: Some(ref plan),
             }) if plan == "Business"

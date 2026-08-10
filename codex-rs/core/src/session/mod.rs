@@ -486,9 +486,6 @@ pub(crate) fn resolve_multi_agent_version(
 
 pub(crate) const INITIAL_SUBMIT_ID: &str = "";
 pub(crate) const SUBMISSION_CHANNEL_CAPACITY: usize = 512;
-const CYBER_VERIFY_URL: &str = "https://chatgpt.com/cyber";
-const CYBER_SAFETY_URL: &str = "https://developers.openai.com/codex/concepts/cyber-safety";
-
 impl Session {
     /// Spawn and initialize a new session.
     pub(crate) async fn spawn(args: SessionSpawnArgs) -> CodexResult<(Arc<Self>, SessionIo)> {
@@ -1394,7 +1391,7 @@ impl Session {
                         EventMsg::Warning(WarningEvent {
                             message: format!(
                                 "This session was recorded with model `{prev}` but is resuming with `{curr}`. \
-                         Consider switching back to `{prev}` as it may affect Codex performance."
+                         Consider switching back to `{prev}` as it may affect Redapto performance."
                             ),
                         }),
                     )
@@ -2513,7 +2510,7 @@ impl Session {
         let Ok(native_environment_cwd) = environment.cwd.to_abs_path() else {
             warn!(
                 cwd = %environment.cwd,
-                "request_permissions requires a cwd native to the Codex host"
+                "request_permissions requires a cwd native to the Redapto host"
             );
             return Some(RequestPermissionsResponse {
                 permissions: RequestPermissionProfile::default(),
@@ -2790,7 +2787,7 @@ impl Session {
                         warn!(
                             cwd = %entry.environment.cwd,
                             %err,
-                            "request_permissions requires a cwd native to the Codex host"
+                            "request_permissions requires a cwd native to the Redapto host"
                         );
                         RequestPermissionsResponse {
                             permissions: RequestPermissionProfile::default(),
@@ -3255,7 +3252,7 @@ impl Session {
         warn!("server reported model {server_model} while requested model was {requested_model}");
 
         let warning_message = format!(
-            "Your account was flagged for potentially high-risk cyber activity and this request was routed to gpt-5.2 as a fallback. To regain access to gpt-5.3-codex, apply for trusted access: {CYBER_VERIFY_URL} or learn more: {CYBER_SAFETY_URL}"
+            "Your provider reported that this account was flagged for potentially high-risk cyber activity, so the request was routed from {requested_model} to {server_model}. Contact your provider administrator if you need authorized access for security work."
         );
 
         self.send_event(

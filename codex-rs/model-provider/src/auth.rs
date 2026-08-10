@@ -246,7 +246,7 @@ pub(crate) async fn resolve_provider_auth_for_scope(
                     attempts = *attempts,
                     error = %message,
                     newly_engaged,
-                    "agent identity bootstrap unavailable; using ChatGPT bearer auth for this session"
+                    "agent identity bootstrap unavailable; using provider bearer credentials for this session"
                 );
                 resolve_provider_auth(auth, provider).map(ResolvedProviderAuth::new)
             } else {

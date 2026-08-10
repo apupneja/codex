@@ -55,7 +55,7 @@ impl ChatWidget {
     }
 
     pub(super) fn connectors_enabled(&self) -> bool {
-        self.config.features.enabled(Feature::Apps) && self.has_chatgpt_account
+        self.config.features.enabled(Feature::Apps) && self.has_hosted_provider_account
     }
 
     pub(super) fn connectors_for_mentions(&self) -> Option<&[AppInfo]> {
@@ -188,7 +188,7 @@ impl ChatWidget {
             let instructions = if connector.is_accessible {
                 "Manage this app in your browser."
             } else {
-                "Install this app in your browser, then reload Codex."
+                "Install this app in your browser, then reload Redapto."
             };
             if let Some(install_url) = connector.install_url.clone() {
                 let app_id = connector.id.clone();

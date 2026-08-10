@@ -171,7 +171,7 @@ pub fn auth_elicitation_completed_result(
         content: vec![serde_json::json!({
             "type": "text",
             "text": format!(
-                "Authentication for {} was requested and accepted. Retry this tool call now.",
+                "A connection for {} was requested and accepted. Retry this tool call now.",
                 auth_failure.connector_name
             ),
         })],
@@ -200,19 +200,19 @@ fn string_auth_failure_field(
 fn auth_elicitation_message(auth_failure: &CodexAppsConnectorAuthFailure) -> String {
     match auth_failure.auth_reason.as_deref() {
         Some("oauth_upgrade_required") => format!(
-            "Reconnect {} on ChatGPT to grant the permissions needed for this request.",
+            "Reconnect {} with your provider to grant the permissions needed for this request.",
             auth_failure.connector_name
         ),
         Some("reauthentication_required") => format!(
-            "Reconnect {} on ChatGPT to restore access for this request.",
+            "Reconnect {} with your provider to restore access for this request.",
             auth_failure.connector_name
         ),
         Some("missing_link") => format!(
-            "Sign in to {} on ChatGPT to use it in Codex.",
+            "Connect {} with your provider to use it in Redapto.",
             auth_failure.connector_name
         ),
         _ => format!(
-            "Sign in to {} on ChatGPT to continue.",
+            "Connect {} with your provider to continue.",
             auth_failure.connector_name
         ),
     }
@@ -322,7 +322,7 @@ mod tests {
                         },
                     },
                 }),
-                message: "Reconnect Google Calendar on ChatGPT to restore access for this request."
+                message: "Reconnect Google Calendar with your provider to restore access for this request."
                     .to_string(),
                 url: "https://chatgpt.com/apps/google-calendar/connector_calendar".to_string(),
                 elicitation_id: "codex_apps_auth_call_123".to_string(),

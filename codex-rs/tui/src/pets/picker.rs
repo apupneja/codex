@@ -39,7 +39,7 @@ struct PetPickerEntry {
 /// Build the selection popup parameters for `/pets`.
 ///
 /// The picker preselects `DEFAULT_PET_ID` when no pet is configured so the UI
-/// has a sensible starting point without implying that Codex is already the
+/// has a sensible starting point without implying that Redapto is already the
 /// active ambient pet. Callers should treat the returned actions as the only
 /// supported mutation path; bypassing them would skip preview-loading and
 /// selection-specific event wiring.
@@ -253,10 +253,10 @@ mod tests {
                 "Disable terminal pets",
                 "BSOD",
                 "Chefito",
-                "Codex",
                 "Dewey",
                 "Fireball",
                 "Null Signal",
+                "Redapto",
                 "Rocky",
                 "Seedy",
                 "Stacky",
@@ -270,7 +270,7 @@ mod tests {
     }
 
     #[test]
-    fn picker_preselects_codex_without_marking_it_current_when_no_pet_is_configured() {
+    fn picker_preselects_redapto_without_marking_it_current_when_no_pet_is_configured() {
         let codex_home = tempfile::tempdir().unwrap();
         let params = build_pet_picker_params(
             /*current_pet*/ None,
@@ -278,9 +278,9 @@ mod tests {
             PetPickerPreviewState::default(),
         );
 
-        assert_eq!(params.initial_selected_idx, Some(2));
-        assert_eq!(params.items[2].name, "Codex");
-        assert!(!params.items[2].is_current);
+        assert_eq!(params.initial_selected_idx, Some(5));
+        assert_eq!(params.items[5].name, "Redapto");
+        assert!(!params.items[5].is_current);
     }
 
     #[test]

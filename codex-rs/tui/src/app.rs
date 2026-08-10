@@ -45,8 +45,6 @@ use crate::external_editor;
 use crate::file_search::FileSearchManager;
 use crate::history_cell;
 use crate::history_cell::HistoryCell;
-#[cfg(not(debug_assertions))]
-use crate::history_cell::UpdateAvailableHistoryCell;
 use crate::hooks_rpc::HookTrustUpdate;
 use crate::key_hint::KeyBindingListExt;
 use crate::keymap::KeyChordMatcher;
@@ -82,7 +80,6 @@ use crate::token_usage::TokenUsage;
 use crate::transcript_reflow::TranscriptReflowState;
 use crate::tui;
 use crate::tui::TuiEvent;
-use crate::update_action::UpdateAction;
 use crate::version::CODEX_CLI_VERSION;
 use crate::workspace_command::AppServerWorkspaceCommandRunner;
 use crate::workspace_command::WorkspaceCommandRunner;
@@ -409,7 +406,6 @@ pub struct AppExitInfo {
     pub token_usage: TokenUsage,
     pub thread_id: Option<ThreadId>,
     pub resume_hint: Option<String>,
-    pub update_action: Option<UpdateAction>,
     pub exit_reason: ExitReason,
 }
 
@@ -419,7 +415,6 @@ impl AppExitInfo {
             token_usage: TokenUsage::default(),
             thread_id: None,
             resume_hint: None,
-            update_action: None,
             exit_reason: ExitReason::Fatal(message.into()),
         }
     }
@@ -563,9 +558,6 @@ pub(crate) struct App {
     feedback_audience: FeedbackAudience,
     environment_manager: Arc<EnvironmentManager>,
     app_server_target: AppServerTarget,
-    /// Set when the user confirms an update; propagated on exit.
-    pub(crate) pending_update_action: Option<UpdateAction>,
-
     /// Tracks the thread we intentionally shut down while exiting the app.
     ///
     /// When this matches the active thread, its `ShutdownComplete` should lead to
@@ -710,13 +702,15 @@ fn session_start_error(
 fn archived_session_guidance(err: &color_eyre::eyre::Report) -> Option<String> {
     let err = err.to_string();
     let message = &err[err.find("session ")?..];
-    if !message.contains(" is archived. Run `codex unarchive ") {
+    if !message.contains(" is archived. Run `codex unarchive ")
+        && !message.contains(" is archived. Run `redapto unarchive ")
+    {
         return None;
     }
     let message = message
         .split_once(" (code ")
         .map_or(message, |(message, _)| message);
-    Some(message.to_string())
+    Some(message.replace("`codex unarchive ", "`redapto unarchive "))
 }
 
 fn active_turn_interrupt_race(error: &TypedRequestError) -> Option<String> {
@@ -752,8 +746,8 @@ impl App {
             workspace_command_runner: self.workspace_command_runner.clone(),
             initial_user_message,
             enhanced_keys_supported: self.enhanced_keys_supported,
-            has_chatgpt_account: self.chat_widget.has_chatgpt_account(),
-            has_codex_backend_auth: self.chat_widget.has_codex_backend_auth(),
+            has_hosted_provider_account: self.chat_widget.has_hosted_provider_account(),
+            has_hosted_provider_auth: self.chat_widget.has_hosted_provider_auth(),
             model_catalog: self.model_catalog.clone(),
             feedback: self.feedback.clone(),
             is_first_run: false,
@@ -853,8 +847,8 @@ impl App {
         let model_catalog = Arc::new(ModelCatalog::new(available_models.clone()));
         let feedback_audience = bootstrap.feedback_audience;
         let auth_mode = bootstrap.auth_mode;
-        let has_chatgpt_account = bootstrap.has_chatgpt_account;
-        let has_codex_backend_auth = matches!(auth_mode, Some(TelemetryAuthMode::Chatgpt));
+        let has_hosted_provider_account = bootstrap.has_hosted_provider_account;
+        let has_hosted_provider_auth = matches!(auth_mode, Some(TelemetryAuthMode::Chatgpt));
         let requires_openai_auth = bootstrap.requires_openai_auth;
         let status_account_display = bootstrap.status_account_display.clone();
         let initial_plan_type = bootstrap.plan_type;
@@ -922,8 +916,8 @@ impl App {
                         Vec::new(),
                     ),
                     enhanced_keys_supported,
-                    has_chatgpt_account,
-                    has_codex_backend_auth,
+                    has_hosted_provider_account,
+                    has_hosted_provider_auth,
                     model_catalog: model_catalog.clone(),
                     feedback: feedback.clone(),
                     is_first_run,
@@ -962,8 +956,8 @@ impl App {
                         Vec::new(),
                     ),
                     enhanced_keys_supported,
-                    has_chatgpt_account,
-                    has_codex_backend_auth,
+                    has_hosted_provider_account,
+                    has_hosted_provider_auth,
                     model_catalog: model_catalog.clone(),
                     feedback: feedback.clone(),
                     is_first_run,
@@ -1001,8 +995,8 @@ impl App {
                         Vec::new(),
                     ),
                     enhanced_keys_supported,
-                    has_chatgpt_account,
-                    has_codex_backend_auth,
+                    has_hosted_provider_account,
+                    has_hosted_provider_auth,
                     model_catalog: model_catalog.clone(),
                     feedback: feedback.clone(),
                     is_first_run,
@@ -1029,12 +1023,9 @@ impl App {
             color_eyre::eyre::eyre!(
                 "Invalid `tui.keymap` configuration: {err}\n\
 Fix the config and retry.\n\
-See the Codex keymap documentation for supported actions and examples."
+See the Redapto keymap documentation for supported actions and examples."
             )
         })?;
-        #[cfg(not(debug_assertions))]
-        let upgrade_version = crate::updates::get_upgrade_version(&config);
-
         let mut app = Self {
             model_catalog,
             session_telemetry: session_telemetry.clone(),
@@ -1071,7 +1062,6 @@ See the Codex keymap documentation for supported actions and examples."
             feedback_audience,
             environment_manager,
             app_server_target,
-            pending_update_action: None,
             pending_shutdown_exit_thread_id: None,
             windows_sandbox: WindowsSandboxState::default(),
             thread_event_channels: HashMap::new(),
@@ -1158,7 +1148,7 @@ See the Codex keymap documentation for supported actions and examples."
         // Kick off a non-blocking rate-limit prefetch so the first `/status`
         // already has data and available reset credits can be surfaced, without
         // delaying the initial frame render.
-        if requires_openai_auth && has_chatgpt_account {
+        if requires_openai_auth && has_hosted_provider_account {
             let reset_hint_request_id = app.chat_widget.start_rate_limit_reset_startup_check();
             app.refresh_rate_limits(
                 &app_server,
@@ -1171,25 +1161,6 @@ See the Codex keymap documentation for supported actions and examples."
         let mut listen_for_app_server_events = true;
         let mut waiting_for_initial_session_configured = wait_for_initial_session_configured;
 
-        #[cfg(not(debug_assertions))]
-        let pre_loop_exit_reason = if let Some(latest_version) = upgrade_version {
-            let control = Box::pin(app.handle_event(
-                tui,
-                &mut app_server,
-                AppEvent::InsertHistoryCell(Box::new(UpdateAvailableHistoryCell::new(
-                    latest_version,
-                    crate::update_action::get_update_action(),
-                ))),
-            ))
-            .await?;
-            match control {
-                AppRunControl::Continue => None,
-                AppRunControl::Exit(exit_reason) => Some(exit_reason),
-            }
-        } else {
-            None
-        };
-        #[cfg(debug_assertions)]
         let pre_loop_exit_reason: Option<ExitReason> = None;
 
         let exit_reason_result = if let Some(exit_reason) = pre_loop_exit_reason {
@@ -1287,7 +1258,6 @@ See the Codex keymap documentation for supported actions and examples."
             token_usage: app.token_usage(),
             thread_id,
             resume_hint,
-            update_action: app.pending_update_action,
             exit_reason,
         })
     }

@@ -186,7 +186,8 @@ async fn list_and_get_resolve_cloud_managed_mcp_without_writing_user_config() ->
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn login_and_logout_persist_only_cloud_managed_mcp_oauth_credentials() -> Result<()> {
+async fn authorize_and_deauthorize_persist_only_cloud_managed_mcp_oauth_credentials() -> Result<()>
+{
     let Some(fixture) = CloudManagedMcpFixture::new().await? else {
         return Ok(());
     };
@@ -243,13 +244,13 @@ async fn login_and_logout_persist_only_cloud_managed_mcp_oauth_credentials() -> 
         .mount(&fixture.server)
         .await;
 
-    let mut command = fixture.command(&["mcp", "login", MANAGED_SERVER_NAME])?;
+    let mut command = fixture.command(&["mcp", "authorize", MANAGED_SERVER_NAME])?;
     command.stdout(Stdio::piped()).stderr(Stdio::inherit());
     let mut child = command.spawn()?;
     let stdout = child
         .stdout
         .take()
-        .context("MCP login did not provide captured stdout")?;
+        .context("MCP authorization did not provide captured stdout")?;
     let mut lines = BufReader::new(stdout).lines();
     let authorization_url = timeout(Duration::from_secs(30), async {
         while let Some(line) = lines.next_line().await? {
@@ -257,7 +258,7 @@ async fn login_and_logout_persist_only_cloud_managed_mcp_oauth_credentials() -> 
                 return Ok::<_, anyhow::Error>(Url::parse(line.trim())?);
             }
         }
-        anyhow::bail!("MCP login exited before printing its OAuth authorization URL")
+        anyhow::bail!("MCP authorization exited before printing its OAuth authorization URL")
     })
     .await
     .context("timed out waiting for the managed MCP authorization URL")??;
@@ -326,23 +327,23 @@ async fn login_and_logout_persist_only_cloud_managed_mcp_oauth_credentials() -> 
         "managed MCP OAuth callback failed: {callback_response}"
     );
 
-    let login_status = timeout(Duration::from_secs(30), child.wait())
+    let authorization_status = timeout(Duration::from_secs(30), child.wait())
         .await
-        .context("timed out waiting for managed MCP login")??;
+        .context("timed out waiting for managed MCP authorization")??;
     ensure!(
-        login_status.success(),
-        "managed MCP login failed: status={login_status}"
+        authorization_status.success(),
+        "managed MCP authorization failed: status={authorization_status}"
     );
     timeout(Duration::from_secs(30), async {
         while let Some(line) = lines.next_line().await? {
-            if line.contains("Successfully logged in to MCP server 'managed-slack'.") {
+            if line.contains("Authorized MCP server 'managed-slack'.") {
                 return Ok::<_, anyhow::Error>(());
             }
         }
-        anyhow::bail!("managed MCP login exited before printing its success message")
+        anyhow::bail!("managed MCP authorization exited before printing its success message")
     })
     .await
-    .context("timed out waiting for the managed MCP login success message")??;
+    .context("timed out waiting for the managed MCP authorization success message")??;
 
     let credentials_path = fixture.codex_home.path().join(".credentials.json");
     let credentials: Value = serde_json::from_slice(&std::fs::read(&credentials_path)?)?;
@@ -367,11 +368,11 @@ async fn login_and_logout_persist_only_cloud_managed_mcp_oauth_credentials() -> 
     assert_eq!(entries[0]["name"], MANAGED_SERVER_NAME);
     assert_eq!(entries[0]["auth_status"], "o_auth");
 
-    let logout_output = fixture
-        .output(&["mcp", "logout", MANAGED_SERVER_NAME])
+    let deauthorize_output = fixture
+        .output(&["mcp", "deauthorize", MANAGED_SERVER_NAME])
         .await?;
     assert!(
-        String::from_utf8(logout_output.stdout)?
+        String::from_utf8(deauthorize_output.stdout)?
             .contains("Removed OAuth credentials for 'managed-slack'.")
     );
     assert!(!credentials_path.exists());

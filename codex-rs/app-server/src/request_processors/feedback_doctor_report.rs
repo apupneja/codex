@@ -24,7 +24,7 @@ const MAX_DOCTOR_TAG_VALUE_LEN: usize = 256;
 
 /// Redacted doctor report data that can be merged into a feedback upload.
 pub(crate) struct DoctorFeedbackReport {
-    /// JSON support report to upload as `codex-doctor-report.json`.
+    /// JSON support report to upload as `redapto-diagnostics-report.json`.
     pub(crate) attachment: FeedbackAttachment,
     /// Low-cardinality Sentry tags derived from the report status and check ids.
     pub(crate) tags: BTreeMap<String, String>,

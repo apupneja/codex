@@ -261,7 +261,7 @@ pub enum Feature {
     CurrentTimeReminder,
     /// Route MCP tool approval prompts through the MCP elicitation request path.
     ToolCallMcpElicitation,
-    /// Prompt Codex Apps connector auth failures through MCP URL elicitations.
+    /// Prompt hosted connector authorization failures through MCP URL elicitations.
     AuthElicitation,
     /// Enable personality selection in the TUI.
     Personality,
@@ -302,7 +302,7 @@ pub enum Feature {
     /// Legacy remote models flag kept for backward compatibility.
     RemoteModels,
     /// Removed legacy git commit attribution guidance flag.
-    CodexGitCommit,
+    RedaptoGitCommit,
     /// Persist rollout metadata to a local SQLite database.
     Sqlite,
     /// Removed compatibility flag for the deleted apply_patch fallback feature.
@@ -634,7 +634,7 @@ fn legacy_usage_notice(alias: &str, feature: Feature) -> (String, Option<String>
                 None
             } else {
                 Some(format!(
-                    "Enable it with `--enable {canonical}` or `[features].{canonical}` in config.toml. See https://developers.openai.com/codex/config-basic#feature-flags for details."
+                    "Enable it with `--enable {canonical}` or `[features].{canonical}` in config.toml."
                 ))
             };
             (summary, details)
@@ -986,8 +986,8 @@ pub const FEATURES: &[FeatureSpec] = &[
         default_enabled: false,
     },
     FeatureSpec {
-        id: Feature::CodexGitCommit,
-        key: "codex_git_commit",
+        id: Feature::RedaptoGitCommit,
+        key: "redapto_git_commit",
         stage: Stage::Removed,
         default_enabled: false,
     },
@@ -1111,7 +1111,7 @@ pub const FEATURES: &[FeatureSpec] = &[
         stage: Stage::Experimental {
             name: "Network proxy",
             menu_description: "Apply network proxy restrictions to sandboxed sessions that already have network access.",
-            announcement: "NEW: Network proxy can now be enabled from /experimental. Restart Codex after enabling it.",
+            announcement: "NEW: Network proxy can now be enabled from /experimental. Restart Redapto after enabling it.",
         },
         default_enabled: false,
     },
@@ -1419,7 +1419,7 @@ pub const FEATURES: &[FeatureSpec] = &[
         id: Feature::AuthElicitation,
         key: "auth_elicitation",
         stage: Stage::Stable,
-        default_enabled: true,
+        default_enabled: false,
     },
     FeatureSpec {
         id: Feature::Personality,
@@ -1473,7 +1473,7 @@ pub const FEATURES: &[FeatureSpec] = &[
         )) {
             Stage::Experimental {
                 name: "Prevent sleep while running",
-                menu_description: "Keep your computer awake while Codex is running a thread.",
+                menu_description: "Keep your computer awake while Redapto is running a thread.",
                 announcement: "NEW: Prevent sleep while running is now available in /experimental.",
             }
         } else {

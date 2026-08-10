@@ -36,7 +36,7 @@ const SIDE_SLASH_COMMAND_UNAVAILABLE_HINT: &str =
     "Press Ctrl+C to return to the main thread first.";
 const GOAL_USAGE_HINT: &str = "Example: /goal improve benchmark coverage";
 const RAW_USAGE: &str = "Usage: /raw [on|off]";
-const USAGE_CHATGPT_LOGIN_REQUIRED: &str = "Sign in with ChatGPT to use /usage.";
+const USAGE_CONNECTION_UNAVAILABLE: &str = "Usage details are unavailable for this connection.";
 
 impl ChatWidget {
     /// Dispatch a bare slash command and record its staged local-history entry.
@@ -163,19 +163,6 @@ impl ChatWidget {
         }
 
         match cmd {
-            SlashCommand::Feedback => {
-                if !self.config.feedback_enabled {
-                    let params = crate::bottom_pane::feedback_disabled_params();
-                    self.bottom_pane.show_selection_view(params);
-                    self.request_redraw();
-                    return;
-                }
-                // Step 1: pick a category (UI built in feedback_view)
-                let params =
-                    crate::bottom_pane::feedback_selection_params(self.app_event_tx.clone());
-                self.bottom_pane.show_selection_view(params);
-                self.request_redraw();
-            }
             SlashCommand::New => {
                 self.app_event_tx.send(AppEvent::NewSession { name: None });
             }
@@ -183,7 +170,7 @@ impl ChatWidget {
                 self.bottom_pane.show_selection_view(SelectionViewParams {
                     title: Some("Archive this session?".to_string()),
                     subtitle: Some(
-                        "Are you sure? This will archive the current session and exit Codex"
+                        "Are you sure? This will archive the current session and exit Redapto"
                             .to_string(),
                     ),
                     footer_hint: Some(standard_popup_hint_line()),
@@ -245,16 +232,6 @@ impl ChatWidget {
             SlashCommand::Fork => {
                 self.app_event_tx
                     .send(AppEvent::ForkCurrentSession { name: None });
-            }
-            SlashCommand::App => {
-                let Some(thread_id) = self.thread_id else {
-                    self.add_error_message(
-                        "Session is still starting; try /app again in a moment.".to_string(),
-                    );
-                    return;
-                };
-                self.app_event_tx
-                    .send(AppEvent::OpenDesktopThread { thread_id });
             }
             SlashCommand::Init => {
                 const INIT_PROMPT: &str = include_str!("../../prompt_for_init_command.md");
@@ -393,9 +370,6 @@ impl ChatWidget {
             }
             SlashCommand::Quit | SlashCommand::Exit => {
                 self.request_quit_without_confirmation();
-            }
-            SlashCommand::Logout => {
-                self.app_event_tx.send(AppEvent::Logout);
             }
             SlashCommand::Copy => {
                 self.copy_last_agent_markdown();
@@ -1061,7 +1035,7 @@ impl ChatWidget {
             collaboration_modes_enabled: self.collaboration_modes_enabled(),
             connectors_enabled: self.connectors_enabled(),
             plugins_command_enabled: self.config.features.enabled(Feature::Plugins),
-            token_activity_command_enabled: self.has_codex_backend_auth,
+            token_activity_command_enabled: self.has_hosted_provider_auth,
             goal_command_enabled: self.config.features.enabled(Feature::Goals),
             service_tier_commands_enabled: self.fast_mode_enabled(),
             personality_command_enabled: self.config.features.enabled(Feature::Personality),
@@ -1071,10 +1045,10 @@ impl ChatWidget {
     }
 
     fn ensure_usage_command_available(&mut self) -> bool {
-        if self.has_codex_backend_auth {
+        if self.has_hosted_provider_auth {
             return true;
         }
-        self.add_error_message(USAGE_CHATGPT_LOGIN_REQUIRED.to_string());
+        self.add_error_message(USAGE_CONNECTION_UNAVAILABLE.to_string());
         false
     }
 
@@ -1099,11 +1073,9 @@ impl ChatWidget {
             | SlashCommand::Raw
             | SlashCommand::Vim
             | SlashCommand::Diff
-            | SlashCommand::App
             | SlashCommand::Rename
             | SlashCommand::TestApproval => QueueDrain::Continue,
-            SlashCommand::Feedback
-            | SlashCommand::Export
+            SlashCommand::Export
             | SlashCommand::New
             | SlashCommand::Archive
             | SlashCommand::Delete
@@ -1130,7 +1102,6 @@ impl ChatWidget {
             | SlashCommand::Memories
             | SlashCommand::Quit
             | SlashCommand::Exit
-            | SlashCommand::Logout
             | SlashCommand::Mention
             | SlashCommand::Skills
             | SlashCommand::Import

@@ -78,7 +78,6 @@ use codex_feedback::CodexFeedback;
 use codex_git_utils::get_git_repo_root;
 use codex_login::default_client::set_default_client_residency_requirement;
 use codex_login::default_client::set_default_originator;
-use codex_login::enforce_login_restrictions;
 use codex_model_provider_info::LMSTUDIO_OSS_PROVIDER_ID;
 use codex_model_provider_info::OLLAMA_OSS_PROVIDER_ID;
 use codex_otel::set_parent_from_context;
@@ -241,7 +240,10 @@ fn exec_stderr_env_filter() -> EnvFilter {
 
 pub async fn run_main(cli: Cli, arg0_paths: Arg0DispatchPaths) -> anyhow::Result<()> {
     if let Err(err) = set_default_originator("codex_exec".to_string()) {
-        tracing::warn!(?err, "Failed to set codex exec originator override {err:?}");
+        tracing::warn!(
+            ?err,
+            "Failed to set Redapto exec originator override {err:?}"
+        );
     }
 
     let Cli {
@@ -318,7 +320,7 @@ pub async fn run_main(cli: Cli, arg0_paths: Arg0DispatchPaths) -> anyhow::Result
     let codex_home = match find_codex_home() {
         Ok(codex_home) => codex_home,
         Err(err) => {
-            eprintln!("Error finding codex home: {err}");
+            eprintln!("Error finding Redapto home: {err}");
             std::process::exit(1);
         }
     };
@@ -461,11 +463,6 @@ pub async fn run_main(cli: Cli, arg0_paths: Arg0DispatchPaths) -> anyhow::Result
     }
 
     set_default_client_residency_requirement(config.enforce_residency.value());
-
-    if let Err(err) = enforce_login_restrictions(&config.auth_config()).await {
-        eprintln!("{err}");
-        std::process::exit(1);
-    }
 
     let otel = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         codex_core::otel_init::build_provider(
@@ -943,7 +940,7 @@ async fn run_exec_session(args: ExecRunArgs) -> anyhow::Result<()> {
         event_processor.process_warning(message);
     }
 
-    info!("Codex initialized with event: {session_configured:?}");
+    info!("Redapto initialized with event: {session_configured:?}");
 
     let (interrupt_tx, mut interrupt_rx) = mpsc::unbounded_channel::<()>();
     tokio::spawn(async move {
@@ -1836,7 +1833,7 @@ async fn handle_server_request(
                 client,
                 request_id,
                 &method,
-                "chatgpt auth token refresh is not supported in exec mode".to_string(),
+                "hosted-account token refresh is not supported in exec mode".to_string(),
             )
             .await
         }

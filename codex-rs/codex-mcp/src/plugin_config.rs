@@ -267,7 +267,7 @@ fn normalize_plugin_mcp_server_value(
             let plugin_display = source.display();
             warn!(
                 plugin = %plugin_display,
-                "plugin MCP server OAuth callbackPort is ignored; Codex uses global MCP OAuth callback settings"
+                "plugin MCP server OAuth callbackPort is ignored; Redapto uses global MCP OAuth callback settings"
             );
         }
 

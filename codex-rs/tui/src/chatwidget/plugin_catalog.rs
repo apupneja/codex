@@ -24,7 +24,6 @@ use crate::key_hint;
 use crate::legacy_core::config::Config;
 use crate::motion::MotionMode;
 use crate::motion::shimmer_text;
-use crate::onboarding::mark_url_hyperlink;
 use crate::render::renderable::ColumnRenderable;
 use crate::render::renderable::Renderable;
 use crate::tui::FrameRequester;
@@ -63,13 +62,12 @@ const OPENAI_CURATED_TAB_ID: &str = "marketplace:openai-curated";
 const PLUGIN_ROW_PREFIX_WIDTH: usize = 6;
 const LOADING_ANIMATION_DELAY: Duration = Duration::from_secs(1);
 const LOADING_ANIMATION_INTERVAL: Duration = Duration::from_millis(100);
-const APPS_HELP_ARTICLE_URL: &str = "https://help.openai.com/en/articles/11487775-apps-in-chatgpt";
 const PERSONAL_MARKETPLACE_RELATIVE_PATH: &str = ".agents/plugins/marketplace.json";
 const REMOTE_LOADING_TAB_ID_PREFIX: &str = "remote-loading:";
 const REMOTE_EMPTY_TAB_ID_PREFIX: &str = "remote-empty:";
 const REMOTE_ERROR_TAB_ID_PREFIX: &str = "remote-error:";
 const OPENAI_CURATED_LOADING_DESCRIPTION: &str =
-    "This updates when OpenAI Curated plugins finish loading.";
+    "This updates when Redapto Curated plugins finish loading.";
 const WORKSPACE_SECTION_TAB_ORDER: u8 = 0;
 const SHARED_WITH_ME_SECTION_TAB_ORDER: u8 = 1;
 const SHARED_WITH_ME_LINK_SECTION_TAB_ORDER: u8 = 2;
@@ -128,7 +126,7 @@ impl MarketplaceProduct {
 
     fn label(self) -> Option<&'static str> {
         match self {
-            Self::OpenAiCurated => Some("OpenAI Curated"),
+            Self::OpenAiCurated => Some("Redapto Curated"),
             Self::Workspace => Some("Workspace"),
             Self::SharedWithMe => Some("Shared with me"),
             Self::SharedWithMeLink => Some("Shared with me (link)"),
@@ -325,7 +323,6 @@ impl Renderable for PluginDisclosureLine {
         Paragraph::new(self.line.clone())
             .wrap(Wrap { trim: false })
             .render(area, buf);
-        mark_url_hyperlink(buf, area, APPS_HELP_ARTICLE_URL);
     }
 
     fn desired_height(&self, width: u16) -> u16 {
@@ -390,7 +387,7 @@ impl ChatWidget {
             format!("Remove {marketplace_display_name} marketplace?").dim(),
         ));
         header.push(Line::from(
-            "This removes the configured marketplace from Codex.".dim(),
+            "This removes the configured marketplace from Redapto.".dim(),
         ));
 
         let cwd_for_remove = self.config.cwd.to_path_buf();
@@ -814,17 +811,20 @@ impl ChatWidget {
         let (curated_empty_name, curated_empty_description) =
             if curated_loading && !curated_has_entries {
                 (
-                    "Loading OpenAI Curated plugins...",
+                    "Loading Redapto Curated plugins...",
                     OPENAI_CURATED_LOADING_DESCRIPTION,
                 )
             } else if let Some(section_error) = by_openai_section_error
                 && !curated_has_entries
             {
-                ("OpenAI Curated unavailable", section_error.message.as_str())
+                (
+                    "Redapto Curated unavailable",
+                    section_error.message.as_str(),
+                )
             } else {
                 (
-                    "No OpenAI Curated plugins available",
-                    "No OpenAI Curated plugins available.",
+                    "No Redapto Curated plugins available",
+                    "No Redapto Curated plugins available.",
                 )
             };
         let mut curated_items = self.plugin_selection_items(
@@ -836,7 +836,7 @@ impl ChatWidget {
         );
         if curated_loading && curated_has_entries {
             curated_items.push(remote_section_loading_item(
-                "OpenAI Curated",
+                "Redapto Curated",
                 OPENAI_CURATED_LOADING_DESCRIPTION,
             ));
         }
@@ -850,10 +850,12 @@ impl ChatWidget {
         }
         tabs.push(SelectionTab {
             id: OPENAI_CURATED_TAB_ID.to_string(),
-            label: "OpenAI Curated".to_string(),
+            label: "Redapto Curated".to_string(),
             header: plugins_header(
-                "OpenAI Curated marketplace.".to_string(),
-                format!("Installed {curated_installed} of {curated_total} OpenAI Curated plugins."),
+                "Redapto Curated marketplace.".to_string(),
+                format!(
+                    "Installed {curated_installed} of {curated_total} Redapto Curated plugins."
+                ),
             ),
             items: curated_items,
         });
@@ -1017,8 +1019,6 @@ impl ChatWidget {
                     "terms of service".bold(),
                     " and ".into(),
                     "privacy policy".bold(),
-                    ". ".into(),
-                    "Learn more".cyan().underlined(),
                     ".".into(),
                 ]),
             });
@@ -1442,7 +1442,7 @@ fn plugin_metadata_items(plugin: &PluginDetail) -> Vec<SelectionItem> {
         ..Default::default()
     });
     items.push(SelectionItem {
-        name: "Auth".to_string(),
+        name: "Connection".to_string(),
         description: Some(plugin_auth_policy_summary(plugin.summary.auth_policy)),
         is_disabled: true,
         ..Default::default()
@@ -1491,8 +1491,8 @@ fn plugin_source_summary(plugin: &PluginDetail) -> String {
 
 fn plugin_auth_policy_summary(auth_policy: PluginAuthPolicy) -> String {
     match auth_policy {
-        PluginAuthPolicy::OnInstall => "Auth on install".to_string(),
-        PluginAuthPolicy::OnUse => "Auth on use".to_string(),
+        PluginAuthPolicy::OnInstall => "Connect during install".to_string(),
+        PluginAuthPolicy::OnUse => "Connect when first used".to_string(),
     }
 }
 

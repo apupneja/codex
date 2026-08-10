@@ -1,4 +1,4 @@
-//! Fixed shortcuts used before users have had a chance to configure Codex.
+//! Fixed shortcuts used before users have had a chance to configure Redapto.
 
 use crossterm::event::KeyCode;
 use crossterm::event::KeyModifiers;
@@ -22,7 +22,6 @@ pub(crate) const SELECT_SECOND: [KeyBinding; 2] = [
     key_hint::plain(KeyCode::Char('2')),
     key_hint::plain(KeyCode::Char('n')),
 ];
-pub(crate) const SELECT_THIRD: [KeyBinding; 1] = [key_hint::plain(KeyCode::Char('3'))];
 pub(crate) const CONFIRM: [KeyBinding; 1] = [key_hint::plain(KeyCode::Enter)];
 pub(crate) const CANCEL: [KeyBinding; 1] = [key_hint::plain(KeyCode::Esc)];
 pub(crate) const QUIT: [KeyBinding; 3] = [
