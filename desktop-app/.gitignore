@@ -1,0 +1,6 @@
+coverage/
+artifacts/
+dist/
+release/
+resources/codex-package/*
+!resources/codex-package/.gitkeep

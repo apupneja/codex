@@ -3,6 +3,11 @@
   "private": true,
   "description": "Tools for repo-wide maintenance.",
   "scripts": {
+    "desktop:build": "pnpm --dir desktop-app build",
+    "desktop:dev": "pnpm --dir desktop-app dev",
+    "desktop:package": "pnpm --dir desktop-app package",
+    "desktop:smoke:packaged": "pnpm --dir desktop-app smoke:packaged",
+    "desktop:test": "pnpm --dir desktop-app test",
     "format": "prettier --check *.json *.md docs/*.md .github/workflows/*.yml **/*.js",
     "format:fix": "prettier --write *.json *.md docs/*.md .github/workflows/*.yml **/*.js",
     "write-hooks-schema": "cargo run --manifest-path ./codex-rs/Cargo.toml -p codex-hooks --bin write_hooks_schema_fixtures"
@@ -12,21 +17,27 @@
   },
   "resolutions": {
     "@modelcontextprotocol/sdk": "1.26.0",
+    "brace-expansion@1.1.12": "1.1.18",
+    "brace-expansion@5.0.5": "5.0.9",
     "braces": "^3.0.3",
     "esbuild": "0.28.1",
-    "fast-uri": "3.1.1",
+    "fast-uri": "3.1.5",
     "flatted": "3.4.2",
     "glob@10.4.5": "10.5.0",
     "handlebars": "4.7.9",
     "hono": "4.12.25",
+    "js-yaml@4.1.0": "4.3.1",
     "micromatch": "^4.0.8",
     "minimatch@3.1.2": "3.1.4",
     "minimatch@9.0.5": "9.0.7",
+    "nanoid": "3.3.17",
     "path-to-regexp": "8.4.0",
     "picomatch@2.3.1": "2.3.2",
     "picomatch@4.0.3": "4.0.4",
+    "postcss@8.5.6": "8.5.23",
     "rollup": "4.59.0",
-    "semver": "^7.7.1"
+    "semver": "^7.7.1",
+    "undici@7.28.0": "7.29.0"
   },
   "overrides": {
     "punycode": "^2.3.1"

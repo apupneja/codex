@@ -1,13 +1,16 @@
 packages:
   - codex-cli
   - codex-rs/responses-api-proxy/npm
+  - desktop-app
   - sdk/typescript
 
 ignoredBuiltDependencies:
   - esbuild
 
 minimumReleaseAge: 10080
-minimumReleaseAgeExclude: []
+minimumReleaseAgeExclude:
+  # Security fix for GHSA-2v37-7h3g-55p8; the root resolution pins 3.3.17.
+  - nanoid
 
 blockExoticSubdeps: true
 strictDepBuilds: true
@@ -17,3 +20,5 @@ trustPolicyExclude: []
 allowBuilds:
   # Build only the official MCP conformance CLI pinned by the TypeScript SDK.
   "@modelcontextprotocol/conformance": true
+  electron: true
+  electron-winstaller: true

@@ -49,6 +49,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check desktop formatting
+        run: pnpm --dir desktop-app format
+
+      - name: Type-check desktop app
+        run: pnpm --dir desktop-app lint
+
+      - name: Test desktop app
+        run: pnpm --dir desktop-app test
+
+      - name: Build and smoke-test desktop app
+        run: xvfb-run --auto-servernum pnpm --dir desktop-app smoke
+
       - name: Stage npm package
         id: stage_npm_package
         env:
