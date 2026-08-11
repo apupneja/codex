@@ -1,4 +1,5 @@
 import { FileCode2, Link } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import type { ThreadItem } from "../../shared/types";
 import {
@@ -6,6 +7,63 @@ import {
   parseMentionedFilesEnvelope,
 } from "../lib/promptContext";
 import { SubmittedContextBlock } from "./ContextBlock";
+
+function CollapsibleMessageText({ text }: { text: string }) {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    const element = elementRef.current;
+    if (!element || expanded) return;
+    const measure = () => {
+      setOverflowing(element.scrollHeight > element.clientHeight + 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [expanded, text]);
+
+  const toggle = () => setExpanded((current) => !current);
+  return (
+    <div
+      ref={elementRef}
+      aria-expanded={overflowing ? expanded : undefined}
+      aria-label={
+        overflowing
+          ? expanded
+            ? "Collapse prompt"
+            : "Show full prompt"
+          : undefined
+      }
+      className={`user-message-text ${expanded ? "is-expanded" : "is-collapsed"} ${overflowing ? "is-overflowing" : ""}`}
+      onClick={() => {
+        const selection = window.getSelection();
+        if (!overflowing || (selection && !selection.isCollapsed)) return;
+        toggle();
+      }}
+      onKeyDown={(event) => {
+        if (!overflowing || (event.key !== "Enter" && event.key !== " ")) {
+          return;
+        }
+        event.preventDefault();
+        toggle();
+      }}
+      role={overflowing ? "button" : undefined}
+      tabIndex={overflowing ? 0 : undefined}
+      title={
+        overflowing
+          ? expanded
+            ? "Collapse prompt"
+            : "Show full prompt"
+          : undefined
+      }
+    >
+      {text}
+    </div>
+  );
+}
 
 export function UserMessage({
   item,
@@ -40,7 +98,7 @@ export function UserMessage({
         </div>
       ) : null}
       <div className="user-message">
-        {envelope.text ? <div>{envelope.text}</div> : null}
+        {envelope.text ? <CollapsibleMessageText text={envelope.text} /> : null}
         {attachments.length || envelope.files.length ? (
           <div className="message-attachments">
             {attachments.map((entry, index) => {

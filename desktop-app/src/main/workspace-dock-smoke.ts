@@ -213,7 +213,13 @@ export async function exerciseWorkspaceDock(
     "repository-scoped new-task composer",
   );
 
-  const prompt = "Audit the coding workflow end to end";
+  const prompt = [
+    "Good UI typography stays invisible.",
+    "Long requests should remain easy to scan at a glance.",
+    "The third visible line fades naturally into the card.",
+    "Everything below remains available when the prompt is expanded.",
+    "Nothing should be discarded or rewritten.",
+  ].join("\n");
   const context = [
     "A unified workflow source",
     "with repository context",
@@ -309,6 +315,52 @@ export async function exerciseWorkspaceDock(
         parseFloat(agentStyle.lineHeight) >= 22;
     })()`,
     "full-width sticky turn query",
+  );
+  await waitForSurface(
+    window,
+    `(() => {
+      const preview = document.querySelector('.conversation-content > .turn:last-of-type .user-message-text');
+      if (!(preview instanceof HTMLElement)) return false;
+      const style = getComputedStyle(preview);
+      return preview.getAttribute('aria-expanded') === 'false' &&
+        preview.classList.contains('is-overflowing') &&
+        Math.abs(parseFloat(style.maxHeight) - parseFloat(style.lineHeight) * 3) < 1 &&
+        style.maskImage !== 'none' &&
+        preview.scrollHeight > preview.clientHeight;
+    })()`,
+    "three-line user-message preview",
+  );
+  const expandedPreview = await window.webContents.executeJavaScript(
+    `(() => {
+      const preview = document.querySelector('.conversation-content > .turn:last-of-type .user-message-text');
+      if (!(preview instanceof HTMLElement)) return false;
+      preview.click();
+      return true;
+    })()`,
+    true,
+  );
+  if (expandedPreview !== true) {
+    throw new Error("Could not expand the user-message preview");
+  }
+  await waitForSurface(
+    window,
+    `(() => {
+      const preview = document.querySelector('.conversation-content > .turn:last-of-type .user-message-text');
+      return preview instanceof HTMLElement &&
+        preview.getAttribute('aria-expanded') === 'true' &&
+        preview.classList.contains('is-expanded') &&
+        preview.clientHeight > parseFloat(getComputedStyle(preview).lineHeight) * 3;
+    })()`,
+    "expanded user message",
+  );
+  await window.webContents.executeJavaScript(
+    `document.querySelector('.conversation-content > .turn:last-of-type .user-message-text')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }))`,
+    true,
+  );
+  await waitForSurface(
+    window,
+    `document.querySelector('.conversation-content > .turn:last-of-type .user-message-text')?.getAttribute('aria-expanded') === 'false'`,
+    "keyboard-collapsed user message",
   );
   const followUpDraft =
     "Check the production layout at this width and keep the controls below this naturally wrapped multiline draft";

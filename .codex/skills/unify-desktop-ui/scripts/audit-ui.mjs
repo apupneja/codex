@@ -31,6 +31,7 @@ const sidebarStyleFile = join(renderer, "styles", "sidebar.css");
 const conversationStyleFile = join(renderer, "styles", "conversation.css");
 const composerFile = join(renderer, "components", "Composer.tsx");
 const promptQueueFile = join(renderer, "components", "PromptQueue.tsx");
+const userMessageFile = join(renderer, "components", "UserMessage.tsx");
 const controllerFile = join(renderer, "state", "useCodexController.ts");
 const workspaceStyleFile = join(renderer, "styles", "workspace.css");
 const mainWindowFile = join(root, "desktop-app", "src", "main", "index.ts");
@@ -110,6 +111,7 @@ if (!sidebarStyleSource.includes("var(--titlebar-native-controls-width)")) {
 const conversationStyleSource = await readFile(conversationStyleFile, "utf8");
 const composerSource = await readFile(composerFile, "utf8");
 const promptQueueSource = await readFile(promptQueueFile, "utf8");
+const userMessageSource = await readFile(userMessageFile, "utf8");
 const controllerSource = await readFile(controllerFile, "utf8");
 if (
   !conversationStyleSource.includes(
@@ -148,8 +150,27 @@ for (const [source, path, required, message] of [
     "steerQueuedPrompt",
     "keep steering separate from ordinary queued submission",
   ],
+  [
+    userMessageSource,
+    userMessageFile,
+    "ResizeObserver",
+    "detect user-message overflow from rendered prose instead of source length",
+  ],
 ]) {
   if (!source.includes(required)) report(errors, path, 1, message);
+}
+if (
+  !conversationStyleSource.includes("max-height: 3lh;") ||
+  !conversationStyleSource.includes(
+    ".user-message-text.is-collapsed.is-overflowing",
+  )
+) {
+  report(
+    errors,
+    conversationStyleFile,
+    1,
+    "keep long user messages at a fading three-line preview",
+  );
 }
 for (const selector of [".user-message-group", ".user-message"]) {
   const block = conversationStyleSource.match(
