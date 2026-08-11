@@ -24,15 +24,25 @@ const appServer =
   process.env.CODEX_DESKTOP_E2E_APP_SERVER ??
   join(appRoot, "resources", "codex-package", "bin", executable);
 const output = join(appRoot, "artifacts", "harness-smoke.png");
+const queueOutput = join(appRoot, "artifacts", "harness-queue-smoke.png");
+const queueMenuOutput = join(
+  appRoot,
+  "artifacts",
+  "harness-queue-menu-smoke.png",
+);
 const reportOutput = join(appRoot, "artifacts", "harness-smoke.json");
 const prompt = "Show me that desktop streaming works end to end.";
 const partialText = "Streaming through the real app-server";
 const finalText = `${partialText} is now complete.`;
+const queuedPrompt = "Review the queued follow-up after this response.";
+const queuedFinalText = "The queued follow-up completed automatically.";
 
 await Promise.all([
   access(appServer),
   mkdir(dirname(output), { recursive: true }),
   unlink(output).catch(() => undefined),
+  unlink(queueOutput).catch(() => undefined),
+  unlink(queueMenuOutput).catch(() => undefined),
   unlink(reportOutput).catch(() => undefined),
 ]);
 const temporaryRoot = await realpath(
@@ -53,6 +63,9 @@ const gate = harness.enqueueSse(
   { gateAfterEvents: 3 },
 );
 if (!gate) throw new Error("Expected the streaming response to have a gate");
+harness.enqueueSse(
+  streamingResponse("desktop-stream-2", "desktop-message-2", [queuedFinalText]),
+);
 await harness.writeCodexConfig(codexHome);
 await writeFile(
   join(userData, "desktop-preferences.json"),
@@ -87,6 +100,10 @@ const child = spawn(electron, [`--user-data-dir=${userData}`, "."], {
     CODEX_DESKTOP_SMOKE_OUTPUT: output,
     CODEX_DESKTOP_SMOKE_PARTIAL: partialText,
     CODEX_DESKTOP_SMOKE_PROMPT: prompt,
+    CODEX_DESKTOP_SMOKE_QUEUED_FINAL: queuedFinalText,
+    CODEX_DESKTOP_SMOKE_QUEUED_PROMPT: queuedPrompt,
+    CODEX_DESKTOP_SMOKE_QUEUE_MENU_OUTPUT: queueMenuOutput,
+    CODEX_DESKTOP_SMOKE_QUEUE_OUTPUT: queueOutput,
     CODEX_DESKTOP_SMOKE_REPORT: reportOutput,
     CODEX_HOME: codexHome,
     ELECTRON_DISABLE_SECURITY_WARNINGS: "true",
@@ -119,11 +136,19 @@ try {
     throw new Error(`Electron exited with ${exitCode}.\n${logs}`);
   }
 
-  await Promise.all([access(output), access(reportOutput)]);
-  const [screenshot, reportJson] = await Promise.all([
-    readFile(output),
-    readFile(reportOutput, "utf8"),
+  await Promise.all([
+    access(output),
+    access(queueOutput),
+    access(queueMenuOutput),
+    access(reportOutput),
   ]);
+  const [screenshot, queueScreenshot, queueMenuScreenshot, reportJson] =
+    await Promise.all([
+      readFile(output),
+      readFile(queueOutput),
+      readFile(queueMenuOutput),
+      readFile(reportOutput, "utf8"),
+    ]);
   const report = JSON.parse(reportJson);
   const width = screenshot.readUInt32BE(16);
   const height = screenshot.readUInt32BE(20);
@@ -133,7 +158,11 @@ try {
   if (
     screenshot.length < 20_000 ||
     screenshot.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
-    !expectedDimensions
+    !expectedDimensions ||
+    queueScreenshot.length < 20_000 ||
+    queueScreenshot.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
+    queueMenuScreenshot.length < 20_000 ||
+    queueMenuScreenshot.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a"
   ) {
     throw new Error(
       `Harness smoke screenshot is invalid (${screenshot.length} bytes).`,
@@ -143,6 +172,9 @@ try {
     report.prompt !== prompt ||
     !report.partialRendered ||
     !report.finalRendered ||
+    !report.queueEdited ||
+    report.queuedPrompt !== queuedPrompt ||
+    !report.queuedTurnCompleted ||
     !report.turnCompleted
   ) {
     throw new Error(`Harness smoke report is invalid: ${reportJson}`);
@@ -150,15 +182,19 @@ try {
   await gate.waitUntilReady();
   if (!gate.released)
     throw new Error("The desktop did not release the SSE gate");
-  await harness.waitForRequests(1);
-  const request = harness.singleRequest();
-  if (!request.messageInputTexts("user").includes(prompt)) {
+  const requests = await harness.waitForRequests(2);
+  if (!requests[0]?.messageInputTexts("user").includes(prompt)) {
     throw new Error(
       "The real app-server request did not include the desktop prompt",
     );
   }
+  if (!requests[1]?.messageInputTexts("user").includes(queuedPrompt)) {
+    throw new Error(
+      "The queued turn did not include the queued desktop prompt",
+    );
+  }
   console.log(
-    `Desktop harness smoke test passed: real app-server, gated streaming, ${output}`,
+    `Desktop harness smoke test passed: real app-server, queue editing, gated streaming, ${output}`,
   );
 } finally {
   if (child.exitCode === null) child.kill("SIGTERM");

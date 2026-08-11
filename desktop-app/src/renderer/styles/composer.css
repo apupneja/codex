@@ -27,22 +27,6 @@
   border-color: var(--border-strong);
 }
 
-.composer.is-active::before {
-  animation: workGlow 2.3s ease-in-out infinite;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--addition) 35%, transparent),
-    transparent
-  );
-  content: "";
-  height: 1px;
-  left: -50%;
-  position: absolute;
-  top: 0;
-  width: 50%;
-}
-
 .composer textarea {
   background: transparent;
   border: 0;
@@ -70,23 +54,66 @@
   padding: 8px;
 }
 
+.composer-compact:has(.context-block-strip) {
+  border-radius: var(--radius-panel);
+}
+
+.composer-compact:has(.compact-composer-row.multiline) {
+  border-radius: var(--radius-panel);
+}
+
+.composer-compact .context-block-strip {
+  padding: 0 0 var(--space-4);
+}
+
 .compact-composer-row {
   align-items: center;
-  display: flex;
-  min-height: 24px;
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: var(--control-height-sm) minmax(30px, 1fr) auto;
+  min-height: var(--control-height-sm);
   padding: 0;
   position: relative;
 }
 
 .composer-compact textarea {
-  flex: 1;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-title);
   line-height: 24px;
   max-height: 116px;
-  min-height: 24px;
+  min-height: var(--control-height-sm);
   min-width: 30px;
   padding: 0 4px;
-  width: auto;
+  width: 100%;
+}
+
+.compact-composer-row.multiline {
+  align-items: end;
+  grid-template-columns: var(--control-height-sm) minmax(0, 1fr);
+}
+
+.compact-composer-row.multiline textarea {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+.compact-composer-row.multiline .compact-add-button {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.compact-composer-row.multiline .compact-composer-controls {
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+}
+
+.compact-composer-row.multiline .composer-model-controls {
+  flex: 1;
+}
+
+.compact-composer-row.multiline .compact-voice-button {
+  margin-left: auto;
 }
 
 .compact-add-button {
@@ -132,13 +159,32 @@
   width: 24px;
 }
 
+.compact-stop-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--muted);
+  display: flex;
+  height: var(--control-height-sm);
+  justify-content: center;
+  margin-left: var(--space-2);
+  padding: 0;
+  width: var(--control-height-sm);
+}
+
+.compact-stop-button:hover {
+  background: var(--surface-hover);
+  color: var(--text-bright);
+}
+
 .compact-voice-button:hover {
   filter: brightness(0.9);
   transform: translateY(-1px);
 }
 
 .compact-voice-button.stop {
-  color: var(--danger);
+  color: var(--accent-contrast);
 }
 
 .compact-voice-button.listening {
@@ -161,7 +207,7 @@
   color: var(--text-dim);
   display: flex;
   flex: none;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   gap: 6px;
   height: 24px;
   max-width: 180px;
@@ -173,7 +219,7 @@
 
 .attachment-chip span {
   color: var(--muted);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-label);
 }
 
 .composer-toolbar {
@@ -220,7 +266,7 @@
   border-radius: 0;
   color: var(--text-bright);
   flex: 1;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-ui);
   height: 18px;
   outline: 0;
@@ -245,7 +291,7 @@
   color: var(--text-bright);
   display: flex;
   flex-wrap: wrap;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-ui);
   gap: 4px 8px;
   height: 28px;
@@ -295,7 +341,7 @@
 
 .composer-tools-menu-list small {
   color: var(--muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   margin-left: 0;
 }
 
@@ -357,7 +403,7 @@
 
 .composer-hint {
   color: var(--muted);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   opacity: 0;
   padding-right: 3px;
   transition: opacity var(--transition-control);
@@ -391,6 +437,24 @@
 
 .send-button.stop {
   background: var(--text);
+}
+
+.send-button-secondary {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--muted);
+  display: flex;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  width: 28px;
+}
+
+.send-button-secondary:hover {
+  background: var(--surface-hover);
+  color: var(--text-bright);
 }
 
 .icon-button.listening {

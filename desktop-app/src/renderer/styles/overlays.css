@@ -47,7 +47,7 @@
   color: var(--text-bright);
   flex: 1;
   font-family: var(--font-ui);
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-display);
   font-weight: var(--font-weight-ui);
   height: 24px;
   line-height: 21px;
@@ -73,7 +73,7 @@
   display: flex;
   align-items: center;
   font-family: var(--font-ui);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-ui);
   height: 28px;
   line-height: 18px;
@@ -82,7 +82,7 @@
 }
 
 .palette-tabs button.active {
-  background: var(--overlay-hover);
+  background: var(--surface-selected);
   color: var(--text-bright);
 }
 
@@ -98,7 +98,7 @@
 .palette-section-heading {
   color: var(--muted);
   font-family: var(--font-ui);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-control);
   font-weight: var(--font-weight-ui);
   line-height: 18px;
   padding: 2px 6px;
@@ -112,7 +112,7 @@
   display: flex;
   gap: 8px;
   font-family: var(--font-ui);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-ui);
   height: 30px;
   line-height: 18px;
@@ -134,7 +134,7 @@
 }
 
 .palette-result-group > button.selected {
-  background: var(--elevated-hover);
+  background: var(--surface-selected);
   color: var(--text-bright);
 }
 
@@ -142,7 +142,7 @@
   color: var(--muted);
   flex: 0 0 auto;
   font-family: var(--font-ui);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-control);
   font-weight: var(--font-weight-ui);
   line-height: 16px;
   max-width: 220px;
@@ -165,7 +165,7 @@
   display: flex;
   align-items: center;
   font-family: var(--font-ui);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-control);
   font-weight: var(--font-weight-ui);
   gap: 14px;
   height: 31px;
@@ -211,13 +211,13 @@
 
 .approval-dialog h2 {
   color: var(--text-bright);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-title);
   margin: 1px 0 4px;
 }
 
 .approval-dialog header p {
   color: var(--muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   line-height: 1.45;
   margin: 0;
 }
@@ -235,7 +235,7 @@
   border-bottom: 1px solid var(--border);
   color: var(--muted);
   display: block;
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   padding: 6px 9px;
 }
 
@@ -243,7 +243,7 @@
   color: var(--text);
   display: block;
   font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   line-height: 1.5;
   padding: 10px;
   user-select: text;
@@ -254,14 +254,14 @@
   align-items: center;
   color: var(--muted);
   display: flex;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   gap: 6px;
   margin-top: 12px;
 }
 
 .approval-permissions {
   color: var(--text-dim);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   max-height: 220px;
   padding: 9px;
   white-space: pre-wrap;
@@ -280,7 +280,7 @@
   border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--border));
   border-radius: var(--radius-sm);
   color: var(--text-dim);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   line-height: 1.45;
   margin-top: 12px;
   padding: 9px;
@@ -296,7 +296,7 @@
 
 .approval-question legend {
   color: var(--text);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   margin-bottom: 7px;
 }
 
@@ -316,12 +316,12 @@
 }
 
 .approval-question label strong {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
 }
 
 .approval-question label small {
   color: var(--muted);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   margin-top: 2px;
 }
 
@@ -354,12 +354,12 @@
 
 .elicitation-field strong {
   color: var(--text);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
 }
 
 .elicitation-field small {
   color: var(--muted);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
 }
 
 .elicitation-field > input:not([type="checkbox"]),
@@ -398,7 +398,7 @@
   align-items: center;
   color: var(--text-dim);
   display: flex;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   gap: 7px;
 }
 
@@ -427,7 +427,7 @@
   box-shadow: var(--shadow-menu);
   color: var(--text-dim);
   display: flex;
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   gap: 6px;
   left: 50%;
   padding: 7px 10px;
@@ -451,12 +451,12 @@
 
 .runtime-error strong {
   color: var(--text);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
 }
 
 .runtime-error span {
   color: var(--muted);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -486,7 +486,7 @@
   box-shadow: var(--shadow-menu);
   color: var(--text);
   display: grid;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   gap: 7px;
   grid-template-columns: 16px 1fr 12px;
   min-height: 39px;
@@ -578,14 +578,6 @@
     transform: translateY(-3px);
   }
 }
-@keyframes workGlow {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(300%);
-  }
-}
 @keyframes micPulse {
   50% {
     box-shadow: 0 0 0 5px var(--danger-surface);
@@ -611,11 +603,6 @@
 @keyframes shimmer {
   to {
     background-position: -200% 0;
-  }
-}
-@keyframes workingShimmer {
-  to {
-    background-position: -220% 0;
   }
 }
 @keyframes orbit {
@@ -672,14 +659,6 @@
 }
 
 @media (min-width: 1400px) {
-  .new-task-center {
-    max-width: 668px;
-  }
-
-  .new-task-center > .composer {
-    max-width: 620px;
-  }
-
   .customize-toolbar,
   .customize-tabs,
   .customize-view .catalog-grid {

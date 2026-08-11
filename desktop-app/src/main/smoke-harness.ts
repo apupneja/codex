@@ -11,6 +11,9 @@ type HarnessSmokeReport = {
   partialRendered: boolean;
   partialText: string;
   prompt: string;
+  queueEdited: boolean;
+  queuedPrompt: string;
+  queuedTurnCompleted: boolean;
   turnCompleted: boolean;
 };
 
@@ -48,12 +51,22 @@ export function harnessSmokeRequested(): boolean {
 export async function runHarnessSmoke(window: BrowserWindow): Promise<void> {
   const destination = requiredEnvironment("CODEX_DESKTOP_SMOKE_OUTPUT");
   const reportDestination = requiredEnvironment("CODEX_DESKTOP_SMOKE_REPORT");
+  const queueDestination = requiredEnvironment(
+    "CODEX_DESKTOP_SMOKE_QUEUE_OUTPUT",
+  );
+  const queueMenuDestination = requiredEnvironment(
+    "CODEX_DESKTOP_SMOKE_QUEUE_MENU_OUTPUT",
+  );
   const prompt = requiredEnvironment("CODEX_DESKTOP_SMOKE_PROMPT");
   const partialText = requiredEnvironment("CODEX_DESKTOP_SMOKE_PARTIAL");
   const finalText = requiredEnvironment("CODEX_DESKTOP_SMOKE_FINAL");
   const releaseUrl = requiredEnvironment(
     "CODEX_DESKTOP_SMOKE_HARNESS_RELEASE_URL",
   );
+  const queuedFinalText = requiredEnvironment(
+    "CODEX_DESKTOP_SMOKE_QUEUED_FINAL",
+  );
+  const queuedPrompt = requiredEnvironment("CODEX_DESKTOP_SMOKE_QUEUED_PROMPT");
 
   await waitForRenderer(
     window,
@@ -86,13 +99,86 @@ export async function runHarnessSmoke(window: BrowserWindow): Promise<void> {
     window,
     `(() => {
       const text = document.querySelector('.conversation-content')?.textContent ?? '';
-      const active = Boolean(document.querySelector('button[aria-label="Stop task"]'));
-      return active && text.includes(${JSON.stringify(partialText)}) && !text.includes(${JSON.stringify(finalText)})
+      const active = Boolean(document.querySelector('button[aria-label="Stop generation"]'));
+      const modelLocked = Boolean(document.querySelector('button[aria-label="Model"]:disabled'));
+      const duplicateProgress = Boolean(document.querySelector('.turn-working'));
+      return active && modelLocked && !duplicateProgress && text.includes(${JSON.stringify(partialText)}) && !text.includes(${JSON.stringify(finalText)})
         ? { active, text }
         : false;
     })()`,
     "the partial streamed answer",
   );
+  await window.webContents.executeJavaScript(
+    `(() => {
+      const textarea = document.querySelector('.conversation-composer-wrap textarea');
+      if (!(textarea instanceof HTMLTextAreaElement)) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      setter?.call(textarea, ${JSON.stringify(queuedPrompt)});
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    true,
+  );
+  await waitForRenderer(
+    window,
+    `Boolean(document.querySelector('button[aria-label="Queue prompt"]:not([disabled])'))`,
+    "the queue prompt action",
+  );
+  await window.webContents.executeJavaScript(
+    `document.querySelector('button[aria-label="Queue prompt"]')?.click()`,
+    true,
+  );
+  await waitForRenderer(
+    window,
+    `document.querySelector('.prompt-queue')?.textContent?.includes(${JSON.stringify(queuedPrompt)}) ?? false`,
+    "the queued follow-up",
+  );
+  await window.webContents.executeJavaScript(
+    `document.querySelector('.queued-prompt-menu-wrap > button')?.click()`,
+    true,
+  );
+  await waitForRenderer(
+    window,
+    `Boolean([...document.querySelectorAll('.queued-prompt-menu button')].find((button) => button.textContent?.includes('Edit prompt')))`,
+    "the queued prompt edit action",
+  );
+  await window.webContents.executeJavaScript(
+    `new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`,
+    true,
+  );
+  const queueMenuImage = (await window.webContents.capturePage()).toPNG();
+  await window.webContents.executeJavaScript(
+    `[...document.querySelectorAll('.queued-prompt-menu button')].find((button) => button.textContent?.includes('Edit prompt'))?.click()`,
+    true,
+  );
+  const queueEdited = await waitForRenderer<boolean>(
+    window,
+    `(() => {
+      const textarea = document.querySelector('.conversation-composer-wrap textarea');
+      return textarea instanceof HTMLTextAreaElement && textarea.value === ${JSON.stringify(queuedPrompt)} && !document.querySelector('.prompt-queue');
+    })()`,
+    "the queued prompt restored to the composer",
+  );
+  await window.webContents.executeJavaScript(
+    `document.querySelector('button[aria-label="Queue prompt"]')?.click()`,
+    true,
+  );
+  await waitForRenderer(
+    window,
+    `(() => {
+      const queue = document.querySelector('.prompt-queue');
+      const textarea = document.querySelector('.conversation-composer-wrap textarea');
+      if (!(queue instanceof HTMLElement) || !(textarea instanceof HTMLTextAreaElement)) return false;
+      const rect = queue.getBoundingClientRect();
+      return queue.textContent?.includes(${JSON.stringify(queuedPrompt)}) && textarea.value === '' && rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight;
+    })()`,
+    "the edited prompt re-queued",
+  );
+  await window.webContents.executeJavaScript(
+    `new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`,
+    true,
+  );
+  const queueImage = (await window.webContents.capturePage()).toPNG();
   const releaseResponse = await net.fetch(releaseUrl, { method: "POST" });
   if (!releaseResponse.ok) {
     throw new Error(
@@ -107,9 +193,9 @@ export async function runHarnessSmoke(window: BrowserWindow): Promise<void> {
     window,
     `(() => {
       const text = document.querySelector('.conversation-content')?.textContent ?? '';
-      const active = Boolean(document.querySelector('button[aria-label="Stop task"]'));
+      const active = Boolean(document.querySelector('button[aria-label="Stop generation"]'));
       const streamingTurn = Boolean(document.querySelector('.turn.is-streaming, .turn-working'));
-      return !active && !streamingTurn && text.includes(${JSON.stringify(finalText)})
+      return !active && !streamingTurn && text.includes(${JSON.stringify(finalText)}) && text.includes(${JSON.stringify(queuedFinalText)})
         ? { active, streamingTurn, text }
         : false;
     })()`,
@@ -138,15 +224,22 @@ export async function runHarnessSmoke(window: BrowserWindow): Promise<void> {
       !partial.text.includes(finalText),
     partialText,
     prompt,
+    queueEdited,
+    queuedPrompt,
+    queuedTurnCompleted: completed.text.includes(queuedFinalText),
     turnCompleted: !completed.active && !completed.streamingTurn,
   };
   const image = await window.webContents.capturePage();
   await Promise.all([
     mkdir(dirname(destination), { recursive: true }),
+    mkdir(dirname(queueDestination), { recursive: true }),
+    mkdir(dirname(queueMenuDestination), { recursive: true }),
     mkdir(dirname(reportDestination), { recursive: true }),
   ]);
   await Promise.all([
     writeFile(destination, image.toPNG()),
+    writeFile(queueDestination, queueImage),
+    writeFile(queueMenuDestination, queueMenuImage),
     writeFile(reportDestination, JSON.stringify(report, null, 2)),
   ]);
 }

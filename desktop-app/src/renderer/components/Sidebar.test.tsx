@@ -150,4 +150,16 @@ describe("Sidebar repositories", () => {
 
     expect(onNewTaskInWorkspace).toHaveBeenCalledWith("/projects/signal-arena");
   });
+
+  it("does not expose internal transport text as a task title", () => {
+    renderSidebar([
+      thread({
+        name: "<system_instruction>You are an internal agent",
+        preview: "Build the production dashboard",
+      }),
+    ]);
+
+    expect(screen.getByText("Build the production dashboard")).toBeVisible();
+    expect(screen.queryByText(/system_instruction/i)).not.toBeInTheDocument();
+  });
 });

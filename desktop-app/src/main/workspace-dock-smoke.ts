@@ -116,7 +116,7 @@ export async function exerciseWorkspaceDock(
     window,
     `Boolean(
       document.querySelector('.workspace-panel:not(.workspace-panel-hidden)') &&
-      document.querySelector('.workspace-tool-tab')?.textContent?.trim() === 'Canvas' &&
+      document.querySelector('.workspace-tool-tab.active')?.textContent?.trim() === 'Canvas' &&
       document.querySelector('.preview-viewport iframe') &&
       !document.querySelector('.preview-loading')
     )`,
@@ -128,7 +128,7 @@ export async function exerciseWorkspaceDock(
     window,
     `Boolean(
       document.querySelector('.workspace-panel:not(.workspace-panel-hidden)') &&
-      document.querySelector('.workspace-tool-tab')?.textContent?.trim() === 'Browser' &&
+      document.querySelector('.workspace-tool-tab.active')?.textContent?.trim() === 'Browser' &&
       document.querySelector('.embedded-browser-viewport[data-ready="true"]')
     )`,
     "Browser",
@@ -164,7 +164,7 @@ export async function exerciseWorkspaceDock(
     window,
     `Boolean(
       document.querySelector('.workspace-panel:not(.workspace-panel-hidden)') &&
-      document.querySelector('.workspace-tool-tab')?.textContent?.trim() === 'Browser' &&
+      document.querySelector('.workspace-tool-tab.active')?.textContent?.trim() === 'Browser' &&
       document.querySelector('.embedded-browser-viewport[data-ready="true"]')
     )`,
     "reopened Browser",
@@ -214,6 +214,39 @@ export async function exerciseWorkspaceDock(
   );
 
   const prompt = "Audit the coding workflow end to end";
+  const context = [
+    "A unified workflow source",
+    "with repository context",
+    "and deployment constraints",
+    "plus customer requirements",
+    "that span several teams",
+    "with explicit review gates",
+    "and production safeguards",
+    "before final acceptance.",
+  ].join("\n");
+  const pastedContext = await window.webContents.executeJavaScript(
+    `(() => {
+      const textarea = document.querySelector('.new-task-view textarea');
+      if (!(textarea instanceof HTMLTextAreaElement)) return false;
+      const data = new DataTransfer();
+      data.setData('text/plain', ${JSON.stringify(context)});
+      textarea.dispatchEvent(new ClipboardEvent('paste', {
+        bubbles: true,
+        clipboardData: data,
+      }));
+      return true;
+    })()`,
+    true,
+  );
+  if (pastedContext !== true) throw new Error("Could not paste mock context");
+  await waitForSurface(
+    window,
+    `Boolean(
+      document.querySelector('.context-block-card') &&
+      document.querySelector('.new-task-view textarea')?.value === ''
+    )`,
+    "collapsed composer context",
+  );
   const enteredPrompt = await window.webContents.executeJavaScript(
     `(() => {
       const textarea = document.querySelector('.new-task-view textarea');
@@ -249,9 +282,62 @@ export async function exerciseWorkspaceDock(
       return Boolean(
         !document.querySelector('.renderer-error') &&
         text.includes(${JSON.stringify(prompt)}) &&
-        text.includes('The mock coding workflow completed successfully.')
+        text.includes('The mock coding workflow completed successfully.') &&
+        document.querySelector('.submitted-context-chip')?.textContent?.includes('A unified workflow source') &&
+        document.querySelector('.reasoning-item .activity-summary')?.getAttribute('aria-expanded') === 'true' &&
+        document.querySelector('.reasoning-detail')?.textContent?.includes('independently open')
       );
     })()`,
     "completed coding workflow",
+  );
+  await waitForSurface(
+    window,
+    `(() => {
+      const content = document.querySelector('.conversation-content');
+      const latestMessage = document.querySelector('.conversation-content > .turn:last-of-type > .user-message-group');
+      const owningTurn = latestMessage?.closest('.turn');
+      if (!(content instanceof HTMLElement) || !(latestMessage instanceof HTMLElement) || !(owningTurn instanceof HTMLElement)) return false;
+      const messageRect = latestMessage.getBoundingClientRect();
+      const turnRect = owningTurn.getBoundingClientRect();
+      const userStyle = getComputedStyle(latestMessage.querySelector('.user-message'));
+      const agentStyle = getComputedStyle(owningTurn.querySelector('.agent-message'));
+      return parseFloat(getComputedStyle(content).paddingTop) > 0 &&
+        getComputedStyle(latestMessage).position === 'sticky' &&
+        Math.abs(messageRect.width - turnRect.width) < 1 &&
+        userStyle.fontSize === '15px' &&
+        agentStyle.fontSize === '15px' &&
+        parseFloat(agentStyle.lineHeight) >= 22;
+    })()`,
+    "full-width sticky turn query",
+  );
+  const followUpDraft =
+    "Check the production layout at this width and keep the controls below this naturally wrapped multiline draft";
+  const enteredFollowUp = await window.webContents.executeJavaScript(
+    `(() => {
+      const textarea = document.querySelector('.conversation-composer-wrap textarea');
+      if (!(textarea instanceof HTMLTextAreaElement)) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      setter?.call(textarea, ${JSON.stringify(followUpDraft)});
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    true,
+  );
+  if (enteredFollowUp !== true) {
+    throw new Error("Could not enter the multiline follow-up");
+  }
+  await waitForSurface(
+    window,
+    `(() => {
+      const row = document.querySelector('.conversation-composer-wrap .compact-composer-row.multiline');
+      const controls = row?.querySelector('.compact-composer-controls');
+      return Boolean(
+        row &&
+        controls?.querySelectorAll('[role="combobox"]').length === 1 &&
+        controls.querySelector('[role="combobox"]')?.textContent?.includes('Composer 2.5 Fast') &&
+        !controls.querySelector('.lucide-lock-keyhole')
+      );
+    })()`,
+    "multiline composer with unified model selection",
   );
 }

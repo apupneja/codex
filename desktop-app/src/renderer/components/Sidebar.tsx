@@ -5,7 +5,6 @@ import {
   BookOpen,
   Blocks,
   Bot,
-  CheckCircle2,
   CircleHelp,
   ChevronDown,
   FolderOpen,
@@ -37,8 +36,10 @@ import { CodexMark } from "./CodexMark";
 import {
   buildSidebarGroups,
   filterSidebarGroups,
+  sidebarThreadTitle,
   type SidebarGrouping,
 } from "./sidebar-repositories";
+import { SidebarRow } from "./SidebarRow";
 
 export type { SidebarGrouping } from "./sidebar-repositories";
 
@@ -137,7 +138,7 @@ export function Sidebar({
         </div>
         <button
           aria-label="Hide Sidebar"
-          className="icon-button subtle"
+          className="icon-button subtle sidebar-toggle-button"
           onClick={onToggle}
         >
           <PanelLeft size={16} />
@@ -161,30 +162,35 @@ export function Sidebar({
       </div>
 
       <nav aria-label="Primary" className="primary-nav">
-        <button className={view === "new" ? "active" : ""} onClick={onNewTask}>
-          <Send size={14} />
-          <span>New Chat</span>
-          <kbd>⌘N</kbd>
-        </button>
-        <button onClick={onSearch}>
-          <Search size={14} />
-          <span>Search</span>
-          <kbd>⌘K</kbd>
-        </button>
-        <button
+        <SidebarRow
+          className={view === "new" ? "active" : ""}
+          icon={<Send size={14} />}
+          label="New Chat"
+          meta={<kbd>⌘N</kbd>}
+          onClick={onNewTask}
+          variant="navigation"
+        />
+        <SidebarRow
+          icon={<Search size={14} />}
+          label="Search"
+          meta={<kbd>⌘K</kbd>}
+          onClick={onSearch}
+          variant="navigation"
+        />
+        <SidebarRow
           className={view === "automations" ? "active" : ""}
+          icon={<Bot size={14} />}
+          label="Automations"
           onClick={() => onSetView("automations")}
-        >
-          <Bot size={14} />
-          <span>Automations</span>
-        </button>
-        <button
+          variant="navigation"
+        />
+        <SidebarRow
           className={view === "customize" ? "active" : ""}
+          icon={<Blocks size={14} />}
+          label="Customize"
           onClick={() => onSetView("customize")}
-        >
-          <Blocks size={15} />
-          <span>Customize</span>
-        </button>
+          variant="navigation"
+        />
       </nav>
 
       <div
@@ -284,9 +290,10 @@ export function Sidebar({
           return (
             <section className="repository-group" key={key}>
               <div className="repository-heading-row">
-                <button
+                <SidebarRow
                   aria-expanded={!isCollapsed}
-                  className="repository-heading"
+                  icon={<FolderOpen size={14} />}
+                  label={group.label}
                   onClick={() =>
                     setCollapsed((current) => {
                       const next = new Set(current);
@@ -295,15 +302,15 @@ export function Sidebar({
                       return next;
                     })
                   }
+                  trailing={
+                    <ChevronDown
+                      className={isCollapsed ? "collapsed" : ""}
+                      size={13}
+                    />
+                  }
                   title={group.label}
-                >
-                  <FolderOpen size={14} />
-                  <span>{group.label}</span>
-                  <ChevronDown
-                    className={isCollapsed ? "collapsed" : ""}
-                    size={13}
-                  />
-                </button>
+                  variant="repository"
+                />
                 {group.workspace ? (
                   <button
                     aria-label={`New chat in ${group.label}`}
@@ -325,22 +332,21 @@ export function Sidebar({
                       className={`thread-row ${activeThread?.id === thread.id && view === "thread" ? "active" : ""}`}
                       key={thread.id}
                     >
-                      <button
+                      <SidebarRow
                         className="thread-main"
+                        label={
+                          <span className="thread-title">
+                            {sidebarThreadTitle(thread)}
+                          </span>
+                        }
+                        meta={
+                          <time>
+                            {timeAgo(thread.recencyAt ?? thread.updatedAt)}
+                          </time>
+                        }
                         onClick={() => onSelectThread(thread)}
-                      >
-                        <CheckCircle2
-                          aria-hidden="true"
-                          className="thread-status"
-                          size={12}
-                        />
-                        <span className="thread-title">
-                          {thread.name || thread.preview || "Untitled task"}
-                        </span>
-                        <time>
-                          {timeAgo(thread.recencyAt ?? thread.updatedAt)}
-                        </time>
-                      </button>
+                        variant="thread"
+                      />
                       <button
                         aria-label="Archive task"
                         className="thread-archive"
@@ -442,16 +448,14 @@ export function Sidebar({
                 ] as const
               ).map(([item, Icon], index) => (
                 <div key={item}>
-                  {index === 5 ? (
-                      <MenuSeparator />
-                  ) : null}
-                    <MenuItem
+                  {index === 5 ? <MenuSeparator /> : null}
+                  <MenuItem
                     role="menuitem"
                     onClick={() => setAccountMenuOpen(false)}
                   >
                     <Icon aria-hidden="true" size={13} />
                     {item}
-                    </MenuItem>
+                  </MenuItem>
                 </div>
               ))}
             </MenuSurface>

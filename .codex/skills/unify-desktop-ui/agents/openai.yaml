@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unify Desktop UI"
+  short_description: "Audit and enforce the desktop design system"
+  default_prompt: "Use $unify-desktop-ui to audit and implement this desktop UI change with shared tokens and primitives."

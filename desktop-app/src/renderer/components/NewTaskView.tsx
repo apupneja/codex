@@ -146,28 +146,28 @@ export function NewTaskView({
           </button>
           {menuOpen ? (
             <MenuSurface className="task-actions-menu" role="menu">
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                controller.addToast(
-                  "Split down is available in the IDE workspace.",
-                );
-              }}
-            >
-              <span>Split Down</span>
-              <kbd>⇧⌘D</kbd>
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                controller.addToast(
-                  "Split right is available in the IDE workspace.",
-                );
-              }}
-            >
-              <span>Split Right</span>
-              <kbd>⌘D</kbd>
-            </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  controller.addToast(
+                    "Split down is available in the IDE workspace.",
+                  );
+                }}
+              >
+                <span>Split Down</span>
+                <kbd>⇧⌘D</kbd>
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  controller.addToast(
+                    "Split right is available in the IDE workspace.",
+                  );
+                }}
+              >
+                <span>Split Right</span>
+                <kbd>⌘D</kbd>
+              </button>
             </MenuSurface>
           ) : null}
         </div>

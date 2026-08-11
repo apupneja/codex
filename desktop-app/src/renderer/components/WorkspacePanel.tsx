@@ -7,19 +7,14 @@ import {
   File,
   Files,
   Folder,
-  Globe2,
-  GitPullRequest,
-  Maximize2,
   MoreHorizontal,
   Paintbrush,
   PanelRightClose,
-  Plus,
   RefreshCw,
   Save,
   Search,
   Star,
   TerminalSquare,
-  X,
 } from "lucide-react";
 import {
   lazy,
@@ -42,10 +37,8 @@ import {
 } from "../lib/encoding";
 import { ChangeReviewPanel } from "./ChangeReviewPanel";
 import { EmbeddedBrowser } from "./EmbeddedBrowser";
-import {
-  WorkspaceOpenMenu,
-  type WorkspaceOpenTarget,
-} from "./WorkspaceOpenMenu";
+import type { WorkspaceOpenTarget } from "./WorkspaceOpenMenu";
+import { WorkspaceTabs, type WorkspaceTab } from "./WorkspaceTabs";
 
 const CodeEditor = lazy(() =>
   import("./CodeEditor").then((module) => ({ default: module.CodeEditor })),
@@ -78,13 +71,7 @@ type DirectoryNodeProps = {
   path: string;
 };
 
-export type WorkspaceTab =
-  | "browser"
-  | "canvas"
-  | "changes"
-  | "editor"
-  | "files"
-  | "terminal";
+export type { WorkspaceTab } from "./WorkspaceTabs";
 
 type PreviewNavigation = {
   entries: string[];
@@ -239,6 +226,9 @@ export function WorkspacePanel({
   const [tab, setTab] = useState<WorkspaceTab>(() =>
     initialWorkspaceTab(initialPreviewUrl),
   );
+  const [openTabs, setOpenTabs] = useState<WorkspaceTab[]>(() => [
+    initialWorkspaceTab(initialPreviewUrl),
+  ]);
   const [dockWidth, setDockWidth] = useState(() => {
     const rawStored = window.localStorage.getItem(DOCK_WIDTH_STORAGE_KEY);
     const stored = rawStored === null ? DEFAULT_DOCK_WIDTH : Number(rawStored);
@@ -276,6 +266,13 @@ export function WorkspacePanel({
   const activeDocument =
     documents.find((document) => document.path === activePath) ?? null;
   const previewUrl = previewNavigation.entries[previewNavigation.index] ?? null;
+
+  const activateTab = useCallback((nextTab: WorkspaceTab) => {
+    setOpenTabs((current) =>
+      current.includes(nextTab) ? current : [...current, nextTab],
+    );
+    setTab(nextTab);
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(DOCK_TAB_STORAGE_KEY, tab);
@@ -494,7 +491,7 @@ export function WorkspacePanel({
       const existing = documents.find((document) => document.path === absolute);
       if (existing) {
         setActivePath(absolute);
-        setTab("editor");
+        activateTab("editor");
         return;
       }
       try {
@@ -525,7 +522,7 @@ export function WorkspacePanel({
             : [...current, document],
         );
         setActivePath(absolute);
-        setTab("editor");
+        activateTab("editor");
       } catch (error) {
         if (loadedWorkspaceRef.current !== requestedWorkspace) return;
         addToast(
@@ -534,7 +531,7 @@ export function WorkspacePanel({
         );
       }
     },
-    [addToast, documents, workspace],
+    [activateTab, addToast, documents, workspace],
   );
 
   useEffect(() => {
@@ -547,17 +544,17 @@ export function WorkspacePanel({
   useEffect(() => {
     if (requestedTab) {
       if (requestedTab === "changes") setActiveChangePath(null);
-      setTab(requestedTab);
+      activateTab(requestedTab);
       onTabRequestConsumed();
     }
-  }, [onTabRequestConsumed, requestedTab]);
+  }, [activateTab, onTabRequestConsumed, requestedTab]);
 
   useEffect(() => {
     if (!requestedChangePath) return;
     setActiveChangePath(requestedChangePath);
-    setTab("changes");
+    activateTab("changes");
     onChangeRequestConsumed();
-  }, [onChangeRequestConsumed, requestedChangePath]);
+  }, [activateTab, onChangeRequestConsumed, requestedChangePath]);
 
   const saveActive = useCallback(async () => {
     if (!activeDocument || savingPathsRef.current.has(activeDocument.path)) {
@@ -644,9 +641,9 @@ export function WorkspacePanel({
       setPreviewError(null);
       setPreviewLoading(true);
       setPreviewFrameVersion((current) => current + 1);
-      setTab("canvas");
+      activateTab("canvas");
     },
-    [previewNavigation],
+    [activateTab, previewNavigation],
   );
 
   function navigatePreviewHistory(nextIndex: number): void {
@@ -682,7 +679,7 @@ export function WorkspacePanel({
     target: WorkspaceOpenTarget,
     input?: string,
   ): void {
-    setTab(target);
+    activateTab(target);
     if (target === "browser" && input) {
       void window.codexDesktop
         .navigateEmbeddedBrowser(input)
@@ -695,6 +692,29 @@ export function WorkspacePanel({
     } else if (target === "canvas" && input) {
       navigatePreview(input);
     }
+  }
+
+  function closeWorkspaceTab(closingTab: WorkspaceTab): void {
+    const remaining = openTabs.filter((candidate) => candidate !== closingTab);
+    const fallback = remaining.at(-1) ?? "editor";
+    setOpenTabs(remaining.length ? remaining : [fallback]);
+    if (tab === closingTab) setTab(fallback);
+  }
+
+  function closeDocument(document: OpenDocument): void {
+    if (
+      document.dirty &&
+      !window.confirm(`Discard unsaved changes to ${document.path}?`)
+    ) {
+      return;
+    }
+    setDocuments((current) => {
+      const next = current.filter((item) => item.path !== document.path);
+      if (activePath === document.path) {
+        setActivePath(next.at(-1)?.path ?? null);
+      }
+      return next;
+    });
   }
 
   function resizeDock(event: ReactPointerEvent<HTMLDivElement>): void {
@@ -751,105 +771,25 @@ export function WorkspacePanel({
         onPointerUp={finishDockResize}
         role="separator"
       />
-      <div className="workspace-tabs">
-        {tab === "editor" && activeDocument ? (
-          documents
-            .filter((document) => document.path === activeDocument.path)
-            .map((document) => (
-              <button
-                className={activePath === document.path ? "active" : ""}
-                key={document.path}
-                onClick={() => setActivePath(document.path)}
-                title={document.path}
-              >
-                <Code2 size={13} />
-                {document.path.split(/[\\/]/).pop()}
-                {document.dirty ? <span className="dirty-dot" /> : null}
-                <X
-                  size={11}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (
-                      document.dirty &&
-                      !window.confirm(
-                        `Discard unsaved changes to ${document.path}?`,
-                      )
-                    ) {
-                      return;
-                    }
-                    setDocuments((current) => {
-                      const next = current.filter(
-                        (item) => item.path !== document.path,
-                      );
-                      if (activePath === document.path) {
-                        setActivePath(next.at(-1)?.path ?? null);
-                      }
-                      return next;
-                    });
-                  }}
-                />
-              </button>
-            ))
-        ) : (
-          <button className="active workspace-tool-tab" type="button">
-            {tab === "browser" ? (
-              <Globe2 size={14} />
-            ) : tab === "canvas" ? (
-              <Paintbrush size={14} />
-            ) : tab === "changes" ? (
-              <GitPullRequest size={14} />
-            ) : tab === "files" ? (
-              <File size={14} />
-            ) : tab === "terminal" ? (
-              <TerminalSquare size={14} />
-            ) : (
-              <Code2 size={14} />
-            )}
-            {tab === "browser"
-              ? "Browser"
-              : tab === "canvas"
-                ? "Canvas"
-                : tab === "changes"
-                  ? "Changes"
-                  : tab === "files"
-                    ? "Files"
-                    : tab === "terminal"
-                      ? "Terminal"
-                      : "Code"}
-          </button>
-        )}
-        <div className="workspace-tab-launcher">
-          <button
-            aria-expanded={workspaceOpenMenu}
-            aria-haspopup="dialog"
-            aria-label="Open workspace tool"
-            className="workspace-add-tab"
-            onClick={() => setWorkspaceOpenMenu((current) => !current)}
-            onMouseDown={(event) => event.stopPropagation()}
-            title="Open file, terminal, browser, or canvas"
-          >
-            <Plus size={18} />
-          </button>
-          {workspaceOpenMenu ? (
-            <WorkspaceOpenMenu
-              onClose={() => setWorkspaceOpenMenu(false)}
-              onOpen={openWorkspaceTarget}
-            />
-          ) : null}
-        </div>
-        <span className="workspace-tab-spacer" />
-        <div className="workspace-tab-actions">
-          <button
-            aria-label={workspaceFocused ? "Restore panel" : "Maximize panel"}
-            onClick={() => setWorkspaceFocused((current) => !current)}
-          >
-            <Maximize2 size={16} />
-          </button>
-          <button aria-label="Hide workspace panel" onClick={onClose}>
-            <PanelRightClose size={16} />
-          </button>
-        </div>
-      </div>
+      <WorkspaceTabs
+        activePath={activePath}
+        activeTab={tab}
+        documents={documents}
+        focused={workspaceFocused}
+        menuOpen={workspaceOpenMenu}
+        onActivateDocument={(path) => {
+          setActivePath(path);
+          activateTab("editor");
+        }}
+        onActivateTab={activateTab}
+        onClose={onClose}
+        onCloseDocument={closeDocument}
+        onCloseTab={closeWorkspaceTab}
+        onMenuOpenChange={setWorkspaceOpenMenu}
+        onOpenTarget={openWorkspaceTarget}
+        onToggleFocused={() => setWorkspaceFocused((current) => !current)}
+        openTabs={openTabs}
+      />
 
       <div
         className={`workspace-body ${tab === "browser" || tab === "canvas" ? "workspace-body-preview" : ""}`}
@@ -958,7 +898,7 @@ export function WorkspacePanel({
                   </button>
                   <button
                     aria-label="Show terminal"
-                    onClick={() => setTab("terminal")}
+                    onClick={() => activateTab("terminal")}
                     title="Terminal"
                   >
                     <TerminalSquare size={16} />
@@ -1198,7 +1138,7 @@ export function WorkspacePanel({
               <span>Select a file from the project explorer.</span>
               <button
                 className="button-secondary"
-                onClick={() => setTab("files")}
+                onClick={() => activateTab("files")}
               >
                 Open Explorer
               </button>

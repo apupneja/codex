@@ -319,9 +319,7 @@ export function SettingsView({
                   ] as const
                 ).map(([item, Icon], index) => (
                   <div key={item}>
-                    {index === 5 ? (
-                      <MenuSeparator />
-                    ) : null}
+                    {index === 5 ? <MenuSeparator /> : null}
                     <button
                       role="menuitem"
                       onClick={() => setAccountMenuOpen(false)}

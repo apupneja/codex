@@ -8,19 +8,22 @@
   --font-mono:
     ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono",
     monospace;
-  --font-size-3xs: 10px;
-  --font-size-2xs: 10px;
-  --font-size-xs: 10px;
-  --font-size-sm: 11px;
-  --font-size-md: 12px;
-  --font-size-base: 13px;
-  --font-size-lg: 14px;
-  --font-size-xl: 15px;
-  --font-size-2xl: 16px;
-  --font-size-3xl: 17px;
-  --font-size-4xl: 19px;
+  --font-size-caption: 10px;
+  --font-size-meta: 11px;
+  --font-size-control: 12px;
+  --font-size-body: 13px;
+  --font-size-label: 14px;
+  --font-size-title: 15px;
+  --font-size-prose: 15px;
+  --font-size-heading: 16px;
+  --font-size-display: 17px;
+  --font-size-content-heading: 18px;
+  --font-size-hero: 19px;
+  --font-size-content-display: 24px;
+  --line-height-prose: 1.48;
+  --line-height-content-heading: 1.42;
   --font-weight-regular: 400;
-  --font-weight-ui: 418;
+  --font-weight-ui: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
 
@@ -40,6 +43,15 @@
   --control-height-md: 28px;
   --control-height-lg: 32px;
   --icon-control-size: 24px;
+  --icon-size-sm: 12px;
+  --icon-size-md: 14px;
+  --icon-size-lg: 16px;
+  --sidebar-gutter: 12px;
+  --sidebar-icon-column: 16px;
+  --sidebar-row-height: 32px;
+  --titlebar-native-controls-width: 64px;
+  --workbench-header-height: 35px;
+  --chat-column-width: 720px;
 
   /* Shape */
   --radius-xs: 4px;
@@ -62,16 +74,18 @@
   --deletion: #db7777;
   --elevated: #242424;
   --elevated-hover: #2c2c2c;
-  --muted: #858585;
+  --muted: #969696;
   --panel: #1d1d1f;
   --palette-bg: #1b1b1b;
   --panel-soft: #222222;
   --menu-bg: #181818;
+  --message-user-border: rgba(240, 240, 240, 0.08);
+  --message-user-bg: #212121;
   --composer-bg: #212121;
   --sidebar: #181818;
-  --text: #d7d7d7;
-  --text-bright: #f2f2f2;
-  --text-dim: #b9b9b9;
+  --text: #e0e0e0;
+  --text-bright: #f0f0f0;
+  --text-dim: #c6c6c6;
   --warning: #d4aa64;
   --canvas: #ffffff;
   --danger-surface: color-mix(in srgb, var(--danger) 18%, transparent);
@@ -96,6 +110,9 @@
   --overlay-hover: rgba(240, 240, 240, 0.08);
   --overlay-active: rgba(240, 240, 240, 0.12);
   --overlay-emphasis: rgba(240, 240, 240, 0.14);
+  --surface-hover: rgba(240, 240, 240, 0.055);
+  --surface-selected: rgba(240, 240, 240, 0.09);
+  --surface-selected-hover: rgba(240, 240, 240, 0.12);
   --scrim: rgba(0, 0, 0, 0.5);
   --onboarding-bg: #292929;
   --onboarding-control: #454545;
@@ -129,6 +146,7 @@
   --motion-overlay: 180ms var(--easing-enter);
   --motion-hero: 500ms var(--easing-enter);
   --motion-composer: 420ms 80ms var(--easing-enter);
+  --z-sticky-content: 4;
 
   font-family: var(--font-ui);
   font-synthesis: none;
@@ -145,16 +163,18 @@
   --border-strong: rgba(20, 22, 24, 0.16);
   --elevated: #ffffff;
   --elevated-hover: #e5e5e5;
-  --muted: #76787b;
+  --muted: #626467;
   --panel: #fafafa;
   --palette-bg: #ffffff;
   --panel-soft: #ededed;
   --menu-bg: #ffffff;
+  --message-user-border: rgba(20, 22, 24, 0.09);
+  --message-user-bg: #ededed;
   --composer-bg: #ffffff;
   --sidebar: #ebebeb;
-  --text: #383838;
+  --text: #2f3032;
   --text-bright: #171717;
-  --text-dim: #686868;
+  --text-dim: #535558;
   --info: #376fa8;
   --info-contrast: #ffffff;
   --overlay-faint: rgba(20, 20, 20, 0.025);
@@ -163,6 +183,9 @@
   --overlay-hover: rgba(20, 20, 20, 0.08);
   --overlay-active: rgba(20, 20, 20, 0.12);
   --overlay-emphasis: rgba(20, 20, 20, 0.16);
+  --surface-hover: rgba(20, 20, 20, 0.055);
+  --surface-selected: rgba(20, 20, 20, 0.09);
+  --surface-selected-hover: rgba(20, 20, 20, 0.12);
   --onboarding-bg: #e5e5e5;
   --onboarding-control: #d1d1d1;
   --onboarding-control-hover: #c8c8c8;
@@ -189,6 +212,8 @@
   --panel: #111111;
   --panel-soft: #151515;
   --menu-bg: #111111;
+  --message-user-border: rgba(255, 255, 255, 0.11);
+  --message-user-bg: #151515;
   --composer-bg: #111111;
   --sidebar: #0a0a0a;
   --text: #eeeeee;

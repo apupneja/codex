@@ -61,7 +61,7 @@
   border-radius: var(--radius-sm);
   color: var(--muted);
   display: flex;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   gap: 5px;
   height: 26px;
   margin: 0 0 15px 4px;
@@ -89,7 +89,7 @@
   background: transparent;
   border: 0;
   color: var(--text);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   min-width: 0;
   outline: 0;
   width: 100%;
@@ -107,7 +107,7 @@
   border-radius: var(--radius-sm);
   color: var(--text-dim);
   display: flex;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-control);
   gap: 5px;
   height: 31px;
   padding: 0 9px;
@@ -127,20 +127,24 @@
   margin-left: auto;
 }
 
-.settings-sidebar nav button.active,
 .settings-sidebar nav button:hover {
-  background: var(--overlay-soft);
+  background: var(--surface-hover);
   color: var(--text-bright);
 }
 
-:root[data-theme="light"] .settings-sidebar nav button.active,
-:root[data-theme="light"] .settings-sidebar nav button:hover {
-  background: var(--overlay-soft);
+.settings-sidebar nav button.active {
+  background: var(--surface-selected);
+  color: var(--text-bright);
+  font-weight: var(--font-weight-medium);
+}
+
+.settings-sidebar nav button.active:hover {
+  background: var(--surface-selected-hover);
 }
 
 .settings-no-results {
   color: var(--muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   padding: 7px 9px;
 }
 
@@ -184,7 +188,7 @@
 
 .settings-account-row strong {
   color: var(--text);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   font-weight: var(--font-weight-medium);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -193,7 +197,7 @@
 
 .settings-account-row small {
   color: var(--muted);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
 }
 
 .settings-close-button {

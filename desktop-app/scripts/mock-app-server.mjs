@@ -45,12 +45,12 @@ function model() {
   };
 }
 
-function userMessage(id, text) {
+function userMessage(id, text, textElements = []) {
   return {
     type: "userMessage",
     id,
     clientId: null,
-    content: [{ type: "text", text, text_elements: [] }],
+    content: [{ type: "text", text, text_elements: textElements }],
   };
 }
 
@@ -194,7 +194,7 @@ function populatedTurns(cwd) {
   ];
 }
 
-function completedTurn(prompt) {
+function completedTurn(input) {
   const now = Math.floor(Date.now() / 1_000);
   return {
     id: "turn-new-1",
@@ -205,7 +205,13 @@ function completedTurn(prompt) {
     completedAt: now,
     durationMs: 250,
     items: [
-      userMessage("user-new-1", prompt),
+      userMessage("user-new-1", input.text, input.text_elements),
+      {
+        type: "reasoning",
+        id: "reasoning-new-1",
+        summary: ["Verified the workflow state."],
+        content: ["The visible reasoning trace remains independently open."],
+      },
       {
         type: "agentMessage",
         id: "agent-new-1",
@@ -330,9 +336,11 @@ input.on("line", (line) => {
       });
       break;
     case "turn/start": {
-      const prompt =
-        params.input?.find((item) => item?.type === "text")?.text ?? "";
-      reply(message.id, { turn: completedTurn(prompt) });
+      const input = params.input?.find((item) => item?.type === "text") ?? {
+        text: "",
+        text_elements: [],
+      };
+      reply(message.id, { turn: completedTurn(input) });
       break;
     }
     case "thread/read":

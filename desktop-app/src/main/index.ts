@@ -919,7 +919,7 @@ function configureIpc(): void {
     }
     const renderedReady = await mainWindow.webContents.executeJavaScript(
       process.env.CODEX_DESKTOP_SMOKE_PREVIEW_URL
-        ? `(() => { const panel = document.querySelector(".workspace-panel:not(.workspace-panel-hidden)")?.getBoundingClientRect(); return Boolean(document.querySelector(".app-shell") && document.querySelector(".conversation-content .turn") && !document.querySelector(".conversation-loading") && document.querySelector('.workspace-tool-tab')?.textContent?.trim() === "Browser" && document.querySelector('.embedded-browser-viewport[data-ready="true"]') && !document.querySelector(".workspace-dock-rail") && panel && Math.abs(panel.right - window.innerWidth) < 1); })()`
+        ? `(() => { const panel = document.querySelector(".workspace-panel:not(.workspace-panel-hidden)")?.getBoundingClientRect(); return Boolean(document.querySelector(".app-shell") && document.querySelector(".conversation-content .turn") && !document.querySelector(".conversation-loading") && document.querySelector('.workspace-tool-tab.active')?.textContent?.trim() === "Browser" && document.querySelector('.embedded-browser-viewport[data-ready="true"]') && !document.querySelector(".workspace-dock-rail") && panel && Math.abs(panel.right - window.innerWidth) < 1); })()`
         : `(() => { const workspace = document.querySelector(".main-workspace")?.getBoundingClientRect(); return Boolean(document.querySelector(".app-shell") && (document.querySelector(".new-task-view") || document.querySelector(".conversation-view")) && !document.querySelector(".workspace-dock-rail") && workspace && Math.abs(workspace.right - window.innerWidth) < 1); })()`,
       true,
     );
@@ -1051,8 +1051,8 @@ async function createWindow(): Promise<void> {
     show: false,
     backgroundColor: "#101112",
     title: APP_NAME,
-    titleBarStyle: isMac ? "hiddenInset" : "default",
-    ...(isMac ? { trafficLightPosition: { x: 14, y: 15 } } : {}),
+    titleBarStyle: isMac ? "hidden" : "default",
+    ...(isMac ? { titleBarOverlay: true } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

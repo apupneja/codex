@@ -1,6 +1,5 @@
 import {
   Archive,
-  ArrowDown,
   Bot,
   Check,
   ChevronDown,
@@ -11,11 +10,9 @@ import {
   Code2,
   ExternalLink,
   FileCode2,
-  GitBranch,
   GitFork,
   Globe2,
   Laptop,
-  Link,
   LoaderCircle,
   MoreHorizontal,
   PanelRight,
@@ -34,8 +31,10 @@ import remarkGfm from "remark-gfm";
 import type { ThreadItem } from "../../shared/types";
 import { MenuItem, MenuSurface, useDismissibleLayer } from "../design-system";
 import type { CodexController, PlanStep } from "../state/useCodexController";
-import { Composer } from "./Composer";
+import { ConversationComposerDock } from "./ConversationComposerDock";
+import { ConversationTurnStatus } from "./ConversationTurnStatus";
 import { ThreadChanges } from "./ThreadChanges";
+import { UserMessage } from "./UserMessage";
 
 type ConversationViewProps = {
   changesOpen: boolean;
@@ -100,64 +99,6 @@ function reasoningText(
     .join("\n\n");
 }
 
-function UserMessage({
-  item,
-  onOpenFile,
-}: {
-  item: Extract<ThreadItem, { type: "userMessage" }>;
-  onOpenFile(path: string): void;
-}) {
-  const text = item.content
-    .filter((entry) => entry.type === "text")
-    .map((entry) => (entry.type === "text" ? entry.text : ""))
-    .join("\n");
-  const attachments = item.content.filter((entry) => entry.type !== "text");
-  return (
-    <div className="user-message">
-      {text ? <div>{text}</div> : null}
-      {attachments.length ? (
-        <div className="message-attachments">
-          {attachments.map((entry, index) => {
-            const path =
-              entry.type === "localImage" ||
-              entry.type === "localAudio" ||
-              entry.type === "skill" ||
-              entry.type === "mention"
-                ? entry.path
-                : null;
-            const label =
-              entry.type === "skill" || entry.type === "mention"
-                ? entry.name
-                : (path?.split(/[\\/]/).pop() ?? entry.type);
-            return path ? (
-              <button
-                key={`${entry.type}-${path}-${index}`}
-                onClick={() => onOpenFile(path)}
-              >
-                <FileCode2 size={12} /> {label}
-              </button>
-            ) : (
-              <span key={`${entry.type}-${index}`}>
-                <Link size={12} /> {label}
-              </span>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function durationLabel(durationMs: number | null): string {
-  if (!durationMs) return "Worked";
-  if (durationMs < 1_000) return `Worked for ${durationMs}ms`;
-  if (durationMs < 60_000)
-    return `Worked for ${Math.round(durationMs / 1_000)}s`;
-  const minutes = Math.floor(durationMs / 60_000);
-  const seconds = Math.round((durationMs % 60_000) / 1_000);
-  return `Worked for ${minutes}m ${seconds}s`;
-}
-
 export function ToolItem({
   cwd,
   item,
@@ -169,7 +110,7 @@ export function ToolItem({
   onOpenChange(path: string): void;
   onOpenFile(path: string): void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(item.type === "reasoning");
   if (item.type === "reasoning") {
     const text = reasoningText(item);
     return (
@@ -628,12 +569,8 @@ export function ConversationView({
 }: ConversationViewProps) {
   const scroll = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
-  const initializedThread = useRef<string | null>(null);
   const menuLayer = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
-  const [collapsedTurns, setCollapsedTurns] = useState<Set<string>>(
-    () => new Set(),
-  );
   const [menuOpen, setMenuOpen] = useState(false);
   useDismissibleLayer({
     active: menuOpen,
@@ -648,35 +585,6 @@ export function ConversationView({
       : controller.runtime.initialized?.platformOs === "windows"
         ? "This PC"
         : "This computer";
-
-  useEffect(() => {
-    const thread = controller.activeThread;
-    if (!thread) {
-      initializedThread.current = null;
-      setCollapsedTurns(new Set());
-      return;
-    }
-    if (initializedThread.current === thread.id || !thread.turns.length) return;
-    initializedThread.current = thread.id;
-    setCollapsedTurns(
-      new Set(
-        thread.turns
-          .filter(
-            (turn) =>
-              turn.status !== "inProgress" &&
-              turn.items.some(
-                (item) =>
-                  item.type === "reasoning" ||
-                  item.type === "commandExecution" ||
-                  item.type === "fileChange" ||
-                  item.type === "mcpToolCall" ||
-                  item.type === "dynamicToolCall",
-              ),
-          )
-          .map((turn) => turn.id),
-      ),
-    );
-  }, [controller.activeThread]);
 
   useEffect(() => {
     if (referenceCapture) {
@@ -888,7 +796,8 @@ export function ConversationView({
                 : null;
             return (
               <section
-                className={`turn ${turn.status === "inProgress" ? "is-streaming" : ""} ${collapsedTurns.has(turn.id) ? "collapsed" : ""}`}
+                aria-busy={turn.status === "inProgress"}
+                className={`turn ${turn.status === "inProgress" ? "is-streaming" : ""}`}
                 key={turn.id}
               >
                 {turn.items.map((item) => {
@@ -989,39 +898,7 @@ export function ConversationView({
                     />
                   ) : null;
                 })()}
-                <div className="turn-meta">
-                  {turn.status === "inProgress" ? (
-                    <span className="turn-working">
-                      <LoaderCircle className="spin" size={13} />
-                      <span>Working</span>
-                    </span>
-                  ) : turn.items.some((item) => item.type === "reasoning") ? (
-                    <button
-                      aria-expanded={!collapsedTurns.has(turn.id)}
-                      aria-label={`${collapsedTurns.has(turn.id) ? "Expand" : "Collapse"} turn`}
-                      onClick={() => {
-                        pinned.current = false;
-                        setAtBottom(false);
-                        setCollapsedTurns((current) => {
-                          const next = new Set(current);
-                          if (next.has(turn.id)) next.delete(turn.id);
-                          else next.add(turn.id);
-                          return next;
-                        });
-                      }}
-                    >
-                      {durationLabel(turn.durationMs)}
-                      <ChevronDown
-                        className={
-                          collapsedTurns.has(turn.id) ? "collapsed" : ""
-                        }
-                        size={13}
-                      />
-                    </button>
-                  ) : (
-                    <span>{durationLabel(turn.durationMs)}</span>
-                  )}
-                </div>
+                <ConversationTurnStatus turn={turn} />
               </section>
             );
           })}
@@ -1040,63 +917,22 @@ export function ConversationView({
           />
         </div>
       </div>
-      <div className="conversation-composer-wrap">
-        <div className="change-actions">
-          {!changesOpen ? (
-            <button onClick={onShowChanges}>Changes</button>
-          ) : null}
-          <button onClick={onOpenTerminal}>
-            Commit &amp; Push <ChevronDown size={12} />
-          </button>
-          {!atBottom ? (
-            <button
-              aria-label="Scroll to latest message"
-              className="scroll-to-latest"
-              onClick={() => {
-                pinned.current = true;
-                setAtBottom(true);
-                scroll.current?.scrollTo({
-                  behavior: "smooth",
-                  top: scroll.current.scrollHeight,
-                });
-              }}
-            >
-              <ArrowDown size={14} />
-            </button>
-          ) : null}
-        </div>
-        <Composer
-          active={Boolean(controller.activeTurn)}
-          compact
-          disabled={controller.runtime.phase !== "ready"}
-          models={controller.models}
-          onInterrupt={controller.interrupt}
-          onSubmit={controller.submitPrompt}
-          onToast={(message) => controller.addToast(message)}
-          preferences={controller.preferences}
-          updatePreferences={controller.updatePreferences}
-        />
-        <div className="conversation-statusbar">
-          <button>
-            <GitBranch size={12} />
-            {controller.activeThread?.gitInfo?.branch ?? "Current branch"}
-            <ChevronDown size={11} />
-          </button>
-          <button>
-            <Laptop size={12} /> {deviceLabel} <ChevronDown size={11} />
-          </button>
-          <span
-            aria-label={`Context ${controller.tokenPercent}%`}
-            className="context-ring"
-            style={{
-              background: `conic-gradient(var(--addition) ${controller.tokenPercent}%, var(--border-strong) 0)`,
-            }}
-            title={`Context ${controller.tokenPercent}%`}
-          >
-            <i />
-          </span>
-        </div>
-      </div>
+      <ConversationComposerDock
+        atBottom={atBottom}
+        changesOpen={changesOpen}
+        controller={controller}
+        deviceLabel={deviceLabel}
+        onOpenTerminal={onOpenTerminal}
+        onScrollToLatest={() => {
+          pinned.current = true;
+          setAtBottom(true);
+          scroll.current?.scrollTo({
+            behavior: "smooth",
+            top: scroll.current.scrollHeight,
+          });
+        }}
+        onShowChanges={onShowChanges}
+      />
     </main>
   );
 }

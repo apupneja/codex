@@ -279,17 +279,18 @@ export default function App() {
       : 13;
     const scale = uiFontSize / 13;
     const sizes = {
-      "--font-size-3xs": 10,
-      "--font-size-2xs": 10,
-      "--font-size-xs": 10,
-      "--font-size-sm": 11,
-      "--font-size-md": 12,
-      "--font-size-base": 13,
-      "--font-size-lg": 14,
-      "--font-size-xl": 15,
-      "--font-size-2xl": 16,
-      "--font-size-3xl": 17,
-      "--font-size-4xl": 19,
+      "--font-size-caption": 10,
+      "--font-size-meta": 11,
+      "--font-size-control": 12,
+      "--font-size-body": 13,
+      "--font-size-label": 14,
+      "--font-size-title": 15,
+      "--font-size-prose": 15,
+      "--font-size-heading": 16,
+      "--font-size-display": 17,
+      "--font-size-content-heading": 18,
+      "--font-size-hero": 19,
+      "--font-size-content-display": 24,
     } as const;
     for (const [token, baseSize] of Object.entries(sizes)) {
       document.documentElement.style.setProperty(

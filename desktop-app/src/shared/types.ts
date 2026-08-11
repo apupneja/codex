@@ -90,6 +90,17 @@ export type ManagedWorktree = {
   path: string;
 };
 
+export type ComposerContextBlock = {
+  text: string;
+  title: string;
+};
+
+export type PromptSubmission = {
+  attachments: string[];
+  contexts: ComposerContextBlock[];
+  text: string;
+};
+
 export type EmbeddedBrowserAction = "back" | "forward" | "reload" | "stop";
 
 export type EmbeddedBrowserBounds = {

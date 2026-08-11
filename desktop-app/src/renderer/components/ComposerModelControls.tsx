@@ -3,6 +3,7 @@ import { Select } from "../design-system";
 
 type ComposerModelControlsProps = {
   compact?: boolean;
+  disabled?: boolean;
   models: Model[];
   preferences: DesktopPreferences;
   updatePreferences(
@@ -27,8 +28,21 @@ function effortLabel(effort: string): string {
   );
 }
 
+function supportedEfforts(model: Model | undefined) {
+  return model?.supportedReasoningEfforts?.length
+    ? model.supportedReasoningEfforts
+    : [
+        { reasoningEffort: "low", description: "Fast" },
+        { reasoningEffort: "medium", description: "Balanced" },
+        { reasoningEffort: "high", description: "Deep reasoning" },
+      ];
+}
+
+const MODEL_CONFIGURATION_SEPARATOR = "\0";
+
 export function ComposerModelControls({
   compact = false,
+  disabled = false,
   models,
   preferences,
   updatePreferences,
@@ -37,13 +51,7 @@ export function ComposerModelControls({
     models.find((model) => model.id === preferences.selectedModel) ??
     models.find((model) => model.isDefault) ??
     models[0];
-  const effortOptions = selectedModel?.supportedReasoningEfforts?.length
-    ? selectedModel.supportedReasoningEfforts
-    : [
-        { reasoningEffort: "low", description: "Fast" },
-        { reasoningEffort: "medium", description: "Balanced" },
-        { reasoningEffort: "high", description: "Deep reasoning" },
-      ];
+  const effortOptions = supportedEfforts(selectedModel);
   const effectiveEffort = effortOptions.some(
     (option) => option.reasoningEffort === preferences.selectedEffort,
   )
@@ -52,46 +60,32 @@ export function ComposerModelControls({
       effortOptions[0]?.reasoningEffort ??
       "medium");
 
+  const options = models.flatMap((model) =>
+    supportedEfforts(model).map((option) => ({
+      description: option.description,
+      label: `${model.displayName} ${effortLabel(option.reasoningEffort)}`,
+      value: `${model.id}${MODEL_CONFIGURATION_SEPARATOR}${option.reasoningEffort}`,
+    })),
+  );
+  const selectedValue = selectedModel
+    ? `${selectedModel.id}${MODEL_CONFIGURATION_SEPARATOR}${effectiveEffort}`
+    : "";
+
   return (
-    <div
-      className={`composer-model-controls ${compact ? "compact" : ""}`}
-    >
+    <div className={`composer-model-controls ${compact ? "compact" : ""}`}>
       <Select
         aria-label="Model"
         className="composer-model-select"
-        onChange={(selectedModelId) => {
-          const nextModel = models.find(
-            (model) => model.id === selectedModelId,
+        disabled={disabled}
+        onChange={(configuration) => {
+          const [selectedModel, selectedEffort] = configuration.split(
+            MODEL_CONFIGURATION_SEPARATOR,
           );
-          const supportsCurrent =
-            nextModel?.supportedReasoningEfforts.some(
-              (option) =>
-                option.reasoningEffort === preferences.selectedEffort,
-            ) ?? true;
-          void updatePreferences({
-            selectedModel: selectedModelId,
-            ...(!supportsCurrent && nextModel
-              ? { selectedEffort: nextModel.defaultReasoningEffort }
-              : {}),
-          });
+          if (!selectedModel || !selectedEffort) return;
+          void updatePreferences({ selectedEffort, selectedModel });
         }}
-        options={models.map((model) => ({
-          label: model.displayName,
-          value: model.id,
-        }))}
-        value={selectedModel?.id ?? ""}
-      />
-      <Select
-        aria-label="Reasoning effort"
-        className="composer-effort-select"
-        onChange={(selectedEffort) =>
-          void updatePreferences({ selectedEffort })
-        }
-        options={effortOptions.map((option) => ({
-          label: effortLabel(option.reasoningEffort),
-          value: option.reasoningEffort,
-        }))}
-        value={effectiveEffort}
+        options={options}
+        value={selectedValue}
       />
     </div>
   );

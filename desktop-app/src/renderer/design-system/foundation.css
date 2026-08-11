@@ -14,7 +14,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-body);
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }
@@ -62,7 +62,7 @@ button:hover:not(:disabled),
 kbd {
   color: var(--muted);
   font-family: var(--font-ui);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
 }
 

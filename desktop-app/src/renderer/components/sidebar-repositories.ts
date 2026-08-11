@@ -1,5 +1,7 @@
 import type { Thread } from "../../shared/types";
 
+import { parseMentionedFilesEnvelope } from "../lib/promptContext";
+
 export type SidebarGrouping =
   | "environment"
   | "repository"
@@ -41,6 +43,21 @@ function matchesThread(thread: Thread, query: string): boolean {
     thread.gitInfo?.branch,
     thread.gitInfo?.originUrl,
   ].some((value) => value?.toLocaleLowerCase().includes(query));
+}
+
+export function sidebarThreadTitle(thread: Thread): string {
+  for (const candidate of [thread.name, thread.preview]) {
+    const raw = candidate?.trim();
+    if (!raw || /^<system_instruction>/i.test(raw)) continue;
+    const visible = parseMentionedFilesEnvelope(raw)
+      .text.replace(/<system_instruction>[\s\S]*?<\/system_instruction>/gi, " ")
+      .replace(/<\/?(?:user|assistant|developer)(?:\s[^>]*)?>/gi, " ")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (visible && !/^\/var\/folders\//.test(visible)) return visible;
+  }
+  return "Untitled task";
 }
 
 export function buildSidebarGroups(

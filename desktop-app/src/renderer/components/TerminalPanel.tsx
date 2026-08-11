@@ -5,7 +5,11 @@ import { useEffect, useRef } from "react";
 import "@xterm/xterm/css/xterm.css";
 
 import type { RuntimeStatus } from "../../shared/types";
-import { cssToken, monospaceFontFamily } from "../design-system";
+import {
+  cssToken,
+  monospaceFontFamily,
+  terminalFontSize,
+} from "../design-system";
 import { decodeBase64, encodeBase64 } from "../lib/encoding";
 
 const MAX_PENDING_INPUT_BYTES = 1024 * 1024;
@@ -48,8 +52,8 @@ export function TerminalPanel({ cwd, fontSize, runtime }: TerminalPanelProps) {
       cursorBlink: true,
       cursorStyle: "bar",
       fontFamily: monospaceFontFamily(),
-      fontSize,
-      lineHeight: 1.35,
+      fontSize: terminalFontSize(fontSize),
+      lineHeight: 1.2,
       scrollback: 5_000,
       theme: {
         background: cssToken("--bg-deep", "#141414"),

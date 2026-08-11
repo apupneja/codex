@@ -62,7 +62,7 @@
 
 .renderer-error strong {
   color: var(--text-bright);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-title);
 }
 
 .renderer-error p {
@@ -111,7 +111,7 @@
   align-items: center;
   border-radius: var(--radius-sm);
   display: inline-flex;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-control);
   font-weight: var(--font-weight-semibold);
   gap: 6px;
   height: 32px;

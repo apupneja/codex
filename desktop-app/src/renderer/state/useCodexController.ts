@@ -7,12 +7,15 @@ import type {
   JsonObject,
   JsonValue,
   Model,
+  PromptSubmission,
   RuntimeStatus,
   ServerRequest,
   Thread,
   ThreadItem,
   Turn,
 } from "../../shared/types";
+import { composePromptText } from "../lib/promptContext";
+import { usePromptQueue } from "./usePromptQueue";
 
 export type AppView =
   | "automations"
@@ -47,6 +50,12 @@ type ThreadResponse = {
   thread: Thread;
   model?: string;
   initialTurnsPage?: TurnsPage | null;
+};
+
+type PreparedPrompt = {
+  byteLength: number;
+  input: JsonValue[];
+  prompt: string;
 };
 
 const THREAD_PAGE_SIZE = 100;
@@ -244,6 +253,28 @@ function titleForThread(thread: Thread): string {
   return thread.name?.trim() || thread.preview.trim() || "Untitled task";
 }
 
+function preparePromptSubmission(submission: PromptSubmission): PreparedPrompt {
+  const { text: prompt, textElements } = composePromptText(submission);
+  const input = [
+    { type: "text", text: prompt, text_elements: textElements },
+    ...submission.attachments.map((path) => {
+      const name = path.split(/[\\/]/).pop() ?? path;
+      if (/\.(?:avif|gif|jpe?g|png|webp)$/i.test(path)) {
+        return { type: "localImage", path };
+      }
+      if (/\.(?:aac|flac|m4a|mp3|ogg|wav)$/i.test(path)) {
+        return { type: "localAudio", path };
+      }
+      return { type: "mention", name, path };
+    }),
+  ] as unknown as JsonValue[];
+  return {
+    byteLength: new TextEncoder().encode(prompt).byteLength,
+    input,
+    prompt,
+  };
+}
+
 export function useCodexController() {
   const [runtime, setRuntime] = useState<RuntimeStatus>({ phase: "starting" });
   const [preferences, setPreferencesState] =
@@ -265,11 +296,18 @@ export function useCodexController() {
     null,
   );
   const [bootstrapped, setBootstrapped] = useState(false);
+  const {
+    enqueue: enqueuePrompt,
+    find: findQueuedPrompt,
+    queues: promptQueues,
+    remove: removePrompt,
+  } = usePromptQueue();
   const bootstrapping = useRef(false);
   const activeThreadRef = useRef<Thread | null>(null);
   const preferencesRef = useRef(preferences);
   const workspaceContextRef = useRef<string | null>(preferences.lastWorkspace);
   const threadSelectionGeneration = useRef(0);
+  const drainingPromptRef = useRef<string | null>(null);
   const workspaceChangeGuardRef = useRef<
     ((nextWorkspace: string | null) => boolean) | null
   >(null);
@@ -997,32 +1035,71 @@ export function useCodexController() {
     [addToast, canChangeWorkspace, resetToNewTask],
   );
 
+  const validatePreparedPrompt = useCallback(
+    (prepared: PreparedPrompt) => {
+      if (!prepared.prompt) return false;
+      if (prepared.byteLength <= 32 * 1_024) return true;
+      addToast("Prompts are limited to 32 KiB of text", "danger");
+      return false;
+    },
+    [addToast],
+  );
+
+  const startPreparedPrompt = useCallback(
+    async (thread: Thread, prepared: PreparedPrompt) => {
+      try {
+        const currentPreferences = preferencesRef.current;
+        const response = await window.codexDesktop.request("turn/start", {
+          effort: currentPreferences.selectedEffort,
+          input: prepared.input,
+          model: currentPreferences.selectedModel,
+          threadId: thread.id,
+        });
+        const turn = requireTurn(
+          isObject(response) ? response.turn : undefined,
+          "turn/start",
+        );
+        const currentThread = activeThreadRef.current;
+        if (currentThread?.id === thread.id) {
+          activeThreadRef.current = {
+            ...currentThread,
+            turns: mergeTurns(currentThread.turns, turn),
+          };
+        }
+        setActiveThread((current) =>
+          current?.id === thread.id
+            ? { ...current, turns: mergeTurns(current.turns, turn) }
+            : current,
+        );
+        setView("thread");
+        return true;
+      } catch (error) {
+        addToast(`Could not send prompt: ${messageForError(error)}`, "danger");
+        return false;
+      }
+    },
+    [addToast],
+  );
+
   const submitPrompt = useCallback(
-    async (text: string, attachments: string[] = []) => {
-      const prompt = text.trim();
-      if (!prompt) {
-        return false;
-      }
-      if (new TextEncoder().encode(prompt).byteLength > 32 * 1_024) {
-        addToast("Prompts are limited to 32 KiB of text", "danger");
-        return false;
-      }
+    async (submission: PromptSubmission) => {
+      const prepared = preparePromptSubmission(submission);
+      if (!validatePreparedPrompt(prepared)) return false;
       try {
         let thread = activeThreadRef.current;
         if (!thread) {
-          let cwd = preferences.lastWorkspace;
+          let cwd = preferencesRef.current.lastWorkspace;
           if (!cwd) {
             cwd = await chooseWorkspace();
           }
-          if (!cwd) {
-            return false;
-          }
+          if (!cwd) return false;
+          const currentPreferences = preferencesRef.current;
           const started = requireThreadResponse(
             await window.codexDesktop.request("thread/start", {
-              approvalPolicy: preferences.approvalPolicy,
+              approvalPolicy: currentPreferences.approvalPolicy,
               cwd,
-              model: preferences.selectedModel,
-              sandbox: preferences.sandbox,
+              model: currentPreferences.selectedModel,
+              sandbox: currentPreferences.sandbox,
             }),
             "thread/start",
           );
@@ -1038,50 +1115,24 @@ export function useCodexController() {
         const activeTurn = [...thread.turns]
           .reverse()
           .find((turn) => turn.status === "inProgress");
-        const input = [
-          { type: "text", text: prompt, text_elements: [] },
-          ...attachments.map((path) => {
-            const name = path.split(/[\\/]/).pop() ?? path;
-            if (/\.(?:avif|gif|jpe?g|png|webp)$/i.test(path)) {
-              return { type: "localImage", path };
-            }
-            if (/\.(?:aac|flac|m4a|mp3|ogg|wav)$/i.test(path)) {
-              return { type: "localAudio", path };
-            }
-            return { type: "mention", name, path };
-          }),
-        ] as unknown as JsonValue[];
         if (activeTurn) {
-          await window.codexDesktop.request("turn/steer", {
-            expectedTurnId: activeTurn.id,
-            input,
-            threadId: thread.id,
-          });
-        } else {
-          const response = await window.codexDesktop.request("turn/start", {
-            effort: preferences.selectedEffort,
-            input,
-            model: preferences.selectedModel,
-            threadId: thread.id,
-          });
-          const turn = requireTurn(
-            isObject(response) ? response.turn : undefined,
-            "turn/start",
-          );
-          setActiveThread((current) =>
-            current?.id === thread?.id
-              ? { ...current, turns: mergeTurns(current.turns, turn) }
-              : current,
-          );
+          enqueuePrompt(thread.id, submission);
+          setView("thread");
+          return true;
         }
-        setView("thread");
-        return true;
+        return startPreparedPrompt(thread, prepared);
       } catch (error) {
         addToast(`Could not send prompt: ${messageForError(error)}`, "danger");
         return false;
       }
     },
-    [addToast, chooseWorkspace, preferences],
+    [
+      addToast,
+      chooseWorkspace,
+      enqueuePrompt,
+      startPreparedPrompt,
+      validatePreparedPrompt,
+    ],
   );
 
   const interrupt = useCallback(async () => {
@@ -1282,6 +1333,81 @@ export function useCodexController() {
       null,
     [activeThread],
   );
+  const queuedPrompts = useMemo(
+    () => (activeThread ? (promptQueues[activeThread.id] ?? []) : []),
+    [activeThread, promptQueues],
+  );
+  const removeQueuedPrompt = useCallback(
+    (promptId: string) => {
+      const threadId = activeThreadRef.current?.id;
+      if (threadId) removePrompt(threadId, promptId);
+    },
+    [removePrompt],
+  );
+  const steerQueuedPrompt = useCallback(
+    async (promptId: string) => {
+      const thread = activeThreadRef.current;
+      if (!thread) return false;
+      const queuedPrompt = findQueuedPrompt(thread.id, promptId);
+      if (!queuedPrompt) return false;
+      const prepared = preparePromptSubmission(queuedPrompt.submission);
+      if (!validatePreparedPrompt(prepared)) return false;
+      const activeTurn = [...thread.turns]
+        .reverse()
+        .find((turn) => turn.status === "inProgress");
+      if (!activeTurn) {
+        const started = await startPreparedPrompt(thread, prepared);
+        if (started) removePrompt(thread.id, promptId);
+        return started;
+      }
+      try {
+        await window.codexDesktop.request("turn/steer", {
+          expectedTurnId: activeTurn.id,
+          input: prepared.input,
+          threadId: thread.id,
+        });
+        removePrompt(thread.id, promptId);
+        return true;
+      } catch (error) {
+        addToast(`Could not steer prompt: ${messageForError(error)}`, "danger");
+        return false;
+      }
+    },
+    [
+      addToast,
+      findQueuedPrompt,
+      removePrompt,
+      startPreparedPrompt,
+      validatePreparedPrompt,
+    ],
+  );
+
+  useEffect(() => {
+    const thread = activeThread;
+    const nextPrompt = queuedPrompts[0];
+    if (!thread || activeTurn || !nextPrompt) return;
+    if (drainingPromptRef.current === nextPrompt.id) return;
+    const prepared = preparePromptSubmission(nextPrompt.submission);
+    if (!validatePreparedPrompt(prepared)) return;
+    drainingPromptRef.current = nextPrompt.id;
+    void startPreparedPrompt(thread, prepared)
+      .then((started) => {
+        if (started) removePrompt(thread.id, nextPrompt.id);
+      })
+      .finally(() => {
+        if (drainingPromptRef.current === nextPrompt.id) {
+          drainingPromptRef.current = null;
+        }
+      });
+  }, [
+    activeThread,
+    activeTurn,
+    queuedPrompts,
+    removePrompt,
+    startPreparedPrompt,
+    validatePreparedPrompt,
+  ]);
+
   const items = useMemo(
     () => activeThread?.turns.flatMap((turn) => turn.items) ?? [],
     [activeThread],
@@ -1308,9 +1434,11 @@ export function useCodexController() {
     newTask,
     plan,
     preferences,
+    queuedPrompts,
     refreshThreads,
     registerWorkspaceChangeGuard,
     renameThread,
+    removeQueuedPrompt,
     requiresAuth,
     respondToServerRequest,
     runtime,
@@ -1319,6 +1447,7 @@ export function useCodexController() {
     serverRequests,
     setView,
     startReview,
+    steerQueuedPrompt,
     submitPrompt,
     threads,
     threadsNextCursor,

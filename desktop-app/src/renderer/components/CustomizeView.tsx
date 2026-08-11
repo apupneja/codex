@@ -566,10 +566,7 @@ export function CustomizeView({ controller }: UtilityProps) {
               <SlidersHorizontal aria-hidden="true" size={12} />
             </button>
             {viewOptionsOpen ? (
-              <MenuSurface
-                className="customize-view-options-menu"
-                role="menu"
-              >
+              <MenuSurface className="customize-view-options-menu" role="menu">
                 {["Group By", "Filter By", "Sort By"].map((label) => (
                   <button key={label} role="menuitem">
                     {label} <ChevronRight aria-hidden="true" size={12} />

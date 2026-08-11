@@ -6,7 +6,7 @@
   color: var(--text-dim);
   display: flex;
   flex: 1;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   gap: 6px;
   min-width: 0;
   overflow: hidden;
@@ -35,7 +35,7 @@
 .conversation-content {
   margin: 0 auto;
   max-width: var(--conversation-column-width);
-  padding: 0 0 172px;
+  padding: var(--space-8) 0 172px;
   width: calc(100% - 32px);
 }
 
@@ -46,7 +46,7 @@
   border-radius: var(--radius-pill);
   color: var(--muted);
   display: flex;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   gap: 6px;
   margin: 0 auto 22px;
   padding: 6px 10px;
@@ -73,31 +73,44 @@
   padding-top: 6px;
 }
 
-.turn > .user-message {
+.turn > .user-message-group {
   order: -2;
 }
 
-.turn > .turn-meta {
+.turn > .turn-progress {
   order: -1;
 }
 
-.turn.collapsed > .turn-trace {
-  display: none;
+.turn > .user-message-group:not(:has(~ .user-message-group)) {
+  background: var(--bg);
+  padding-block: var(--space-2);
+  position: sticky;
+  top: var(--space-4);
+  z-index: var(--z-sticky-content);
+}
+
+.user-message-group {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
 }
 
 .user-message {
   align-self: start;
-  background: var(--panel-soft);
-  border: 1px solid var(--border);
-  border-color: var(--border);
+  background: var(--message-user-bg);
+  border: 1px solid var(--message-user-border);
   border-radius: var(--radius-panel);
   color: var(--text-bright);
-  font-size: var(--font-size-base);
-  line-height: 1.48;
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-prose);
   max-width: 100%;
-  padding: 7px 10px;
+  padding: var(--space-4) var(--space-6);
   user-select: text;
   white-space: pre-wrap;
+  width: 100%;
 }
 
 .message-attachments {
@@ -115,7 +128,7 @@
   border-radius: var(--radius-sm);
   color: var(--text-dim);
   display: inline-flex;
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   gap: 5px;
   max-width: 240px;
   overflow: hidden;
@@ -126,7 +139,7 @@
 
 .generated-image-card > p {
   color: var(--text-dim);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   margin: 0;
   padding: 10px;
 }
@@ -139,11 +152,11 @@
 }
 
 .agent-message {
-  color: var(--text);
-  font-size: var(--font-size-base);
-  line-height: 1.48;
+  color: var(--text-bright);
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-prose);
   min-width: 0;
-  padding: 0 9px;
+  padding: 0 var(--space-5);
   position: relative;
   user-select: text;
 }
@@ -169,22 +182,26 @@
 .markdown h3,
 .markdown h4 {
   color: var(--text-bright);
-  line-height: 1.28;
-  margin: 20px 0 8px;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-content-heading);
+  margin: var(--space-8) 0 var(--space-3);
 }
 
 .markdown h1 {
-  font-size: var(--font-size-4xl);
+  font-size: var(--font-size-content-display);
 }
 .markdown h2 {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-hero);
 }
 .markdown h3 {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-content-heading);
+}
+.markdown h4 {
+  font-size: var(--font-size-heading);
 }
 
 .markdown p {
-  margin: 8px 0;
+  margin: 0 0 var(--space-5);
 }
 
 .markdown ul,
@@ -203,7 +220,7 @@
   border-radius: var(--radius-xs);
   color: var(--info-text);
   font-family: var(--font-mono);
-  font-size: 0.9em;
+  font-size: var(--font-size-control);
   padding: 1px 4px;
 }
 
@@ -243,7 +260,7 @@
 
 .markdown table {
   border-collapse: collapse;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   margin: 12px 0;
   width: 100%;
 }
@@ -300,7 +317,7 @@
   border-radius: var(--radius-sm);
   color: var(--muted);
   display: flex;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-prose);
   gap: 6px;
   letter-spacing: 0.006em;
   min-height: 24px;
@@ -320,20 +337,20 @@
 
 button.activity-summary:hover {
   background: transparent;
-  color: var(--text-dim);
+  color: var(--muted);
 }
 
 .activity-summary code {
   color: var(--muted);
   font-family: inherit;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-prose);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .aggregate-summary b {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-prose);
   font-weight: var(--font-weight-regular);
 }
 
@@ -351,7 +368,7 @@ button.activity-summary:hover {
 }
 
 .file-change-summary b {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   font-weight: var(--font-weight-medium);
 }
 
@@ -382,7 +399,7 @@ button.activity-summary:hover {
   border-radius: var(--radius-sm);
   color: var(--text-dim);
   font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   line-height: 1.5;
   margin: 4px 5px 0;
   max-height: 260px;
@@ -395,10 +412,10 @@ button.activity-summary:hover {
 .reasoning-detail {
   background: transparent;
   border: 0;
-  color: var(--muted);
+  color: var(--text-dim);
   font-family: inherit;
-  font-size: var(--font-size-base);
-  line-height: 1.48;
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-prose);
   margin: 2px 0 2px;
   max-height: none;
   padding: 0;
@@ -460,9 +477,9 @@ button.activity-summary:hover {
 .aggregate-detail {
   background: transparent;
   border: 0;
-  color: var(--muted);
+  color: var(--text-dim);
   font-family: inherit;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-control);
   margin: 0;
 }
 
@@ -488,7 +505,7 @@ button.activity-summary:hover {
   align-items: center;
   border-bottom: 1px solid var(--border);
   display: flex;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   justify-content: space-between;
   padding: 8px 10px;
 }
@@ -502,7 +519,7 @@ button.activity-summary:hover {
 
 .patch-status {
   color: var(--muted);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   text-transform: capitalize;
 }
 
@@ -511,7 +528,7 @@ button.activity-summary:hover {
   background: transparent;
   color: var(--text-dim);
   display: grid;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   gap: 6px;
   grid-template-columns: 14px minmax(0, 1fr) auto auto auto;
   height: 30px;
@@ -537,7 +554,7 @@ button.activity-summary:hover {
 }
 
 .changed-file-row b {
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
 }
 
@@ -558,7 +575,7 @@ button.activity-summary:hover {
   align-items: center;
   color: var(--text);
   display: flex;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-meta);
   gap: 6px;
   margin-bottom: 3px;
 }
@@ -567,7 +584,7 @@ button.activity-summary:hover {
   align-items: center;
   color: var(--muted);
   display: grid;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-caption);
   gap: 7px;
   grid-template-columns: 14px 1fr;
   min-height: 22px;
@@ -583,7 +600,7 @@ button.activity-summary:hover {
 
 .turn-meta {
   color: var(--muted);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   min-height: 14px;
   margin-bottom: 3px;
   padding: 5px 10px 0;
@@ -596,31 +613,12 @@ button.activity-summary:hover {
   gap: 5px;
 }
 
-.turn-working > span {
-  animation: workingShimmer 1.8s linear infinite;
-  background: linear-gradient(
-    90deg,
-    var(--muted) 15%,
-    var(--text-bright) 45%,
-    var(--muted) 75%
-  );
-  background-clip: text;
-  background-size: 220% 100%;
-  color: transparent;
+.turn-progress {
+  font-size: var(--font-size-prose);
 }
 
-.turn-meta button {
-  background: transparent;
-  color: inherit;
-  padding: 0;
-}
-
-.turn-meta button svg {
-  transition: transform var(--transition-control);
-}
-
-.turn-meta button svg.collapsed {
-  transform: rotate(-90deg);
+.turn-working {
+  color: var(--muted);
 }
 
 .conversation-loading {
@@ -654,6 +652,7 @@ button.activity-summary:hover {
 }
 
 .conversation-composer-wrap > .composer,
+.prompt-queue,
 .thread-changes,
 .change-actions,
 .conversation-statusbar {
@@ -661,6 +660,116 @@ button.activity-summary:hover {
   margin-right: auto;
   max-width: var(--conversation-column-width);
   width: 100%;
+}
+
+.conversation-view:has(.prompt-queue) .conversation-content {
+  padding-bottom: 330px;
+}
+
+.prompt-queue {
+  background: var(--composer-bg);
+  border: 1px solid var(--message-user-border);
+  border-radius: var(--radius-panel);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  position: relative;
+}
+
+.prompt-queue-list {
+  max-height: 152px;
+  overflow-y: auto;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.prompt-queue-list:has(.queued-prompt-menu) {
+  max-height: none;
+  overflow: visible;
+}
+
+.queued-prompt-row {
+  align-items: center;
+  border-radius: var(--radius-control);
+  color: var(--text-bright);
+  display: grid;
+  font-size: var(--font-size-prose);
+  gap: var(--space-3);
+  grid-template-columns: 16px minmax(0, 1fr) auto 24px 24px;
+  min-height: 40px;
+  padding: var(--space-2);
+}
+
+.queued-prompt-row.has-kind {
+  grid-template-columns: 16px 28px minmax(0, 1fr) auto 24px 24px;
+}
+
+.queued-prompt-row + .queued-prompt-row {
+  border-top: 1px solid var(--border);
+}
+
+.queued-prompt-row:hover {
+  background: var(--surface-hover);
+}
+
+.queued-prompt-branch {
+  color: var(--muted);
+}
+
+.queued-prompt-kind {
+  align-items: center;
+  background: var(--overlay-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  display: flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.queued-prompt-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queued-prompt-steer,
+.queued-prompt-icon {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  height: var(--control-height-sm);
+  justify-content: center;
+}
+
+.queued-prompt-steer {
+  font-size: var(--font-size-label);
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+
+.queued-prompt-icon {
+  padding: 0;
+  width: var(--control-height-sm);
+}
+
+.queued-prompt-steer:hover:not(:disabled),
+.queued-prompt-icon:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-bright);
+}
+
+.queued-prompt-menu-wrap {
+  position: relative;
+}
+
+.queued-prompt-menu {
+  bottom: calc(100% + var(--space-2));
+  min-width: 144px;
+  position: absolute;
+  right: 0;
+  z-index: var(--z-sticky-content);
 }
 
 .thread-changes {
@@ -674,9 +783,9 @@ button.activity-summary:hover {
 
 .thread-changes-header {
   align-items: center;
-  color: var(--muted);
+  color: var(--text-dim);
   display: flex;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   height: 28px;
   justify-content: space-between;
   padding: 0 6px;
@@ -685,8 +794,8 @@ button.activity-summary:hover {
 .thread-changes-header button {
   background: transparent;
   border-radius: var(--radius-control);
-  color: var(--muted);
-  font-size: var(--font-size-base);
+  color: var(--text-dim);
+  font-size: var(--font-size-body);
   padding: 4px 6px;
 }
 
@@ -703,10 +812,10 @@ button.activity-summary:hover {
 .thread-change-row {
   align-items: center;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-dim);
   display: grid;
   border-radius: var(--radius-control);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   gap: 6px;
   grid-template-columns: 15px minmax(0, 1fr) auto auto;
   height: 28px;
@@ -727,7 +836,7 @@ button.activity-summary:hover {
 }
 
 .thread-change-row b {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-control);
   font-weight: var(--font-weight-medium);
 }
 
@@ -745,7 +854,7 @@ button.activity-summary:hover {
   border-radius: var(--radius-pill);
   color: var(--text-dim);
   display: flex;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-control);
   gap: 4px;
   height: 25px;
   padding: 0 8px;
@@ -759,11 +868,11 @@ button.activity-summary:hover {
 
 .conversation-statusbar {
   align-items: center;
-  color: var(--muted);
+  color: var(--text-dim);
   display: flex;
-  font-size: var(--font-size-sm);
-  gap: 10px;
-  height: 28px;
+  font-size: var(--font-size-control);
+  gap: 6px;
+  height: 30px;
   padding: 0 8px;
 }
 
@@ -772,8 +881,22 @@ button.activity-summary:hover {
   background: transparent;
   color: inherit;
   display: flex;
-  gap: 4px;
-  padding: 0;
+  gap: 5px;
+  min-height: var(--control-height-sm);
+  min-width: 0;
+  padding: 0 4px;
+}
+
+.conversation-statusbar > button:hover {
+  background: var(--overlay-hover);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+}
+
+.conversation-statusbar > button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .conversation-statusbar > * {

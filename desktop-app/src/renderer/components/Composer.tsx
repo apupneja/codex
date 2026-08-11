@@ -4,7 +4,6 @@ import {
   ChevronRight,
   CircleHelp,
   ListTodo,
-  LockKeyhole,
   Mic,
   Paperclip,
   Plug,
@@ -13,10 +12,19 @@ import {
   Workflow,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { ClipboardEvent } from "react";
 
-import type { DesktopPreferences, Model } from "../../shared/types";
+import type {
+  ComposerContextBlock,
+  DesktopPreferences,
+  Model,
+  PromptSubmission,
+} from "../../shared/types";
 import { MenuItem, MenuSurface } from "../design-system";
+import { contextTitle, isLongContext } from "../lib/promptContext";
 import { ComposerModelControls } from "./ComposerModelControls";
+import { ComposerContextCard } from "./ContextBlock";
+import { useCompactComposerLayout } from "./useCompactComposerLayout";
 
 type SpeechRecognitionEventLike = Event & {
   results: ArrayLike<{ 0: { transcript: string } }>;
@@ -43,16 +51,22 @@ type ComposerProps = {
   disabled?: boolean;
   models: Model[];
   onInterrupt(): void;
+  onRestoreRequestHandled?(requestId: string, restored: boolean): void;
   onSubmit(
-    text: string,
-    attachments: string[],
+    submission: PromptSubmission,
   ): boolean | void | Promise<boolean | void>;
   onToast(message: string): void;
   placeholder?: string;
   preferences: DesktopPreferences;
+  restoreRequest?: ComposerRestoreRequest | null;
   updatePreferences(
     patch: Partial<DesktopPreferences>,
   ): Promise<DesktopPreferences>;
+};
+
+export type ComposerRestoreRequest = {
+  requestId: string;
+  submission: PromptSubmission;
 };
 
 type ComposerToolsMenuProps = {
@@ -140,28 +154,72 @@ export function Composer({
   disabled = false,
   models,
   onInterrupt,
+  onRestoreRequestHandled,
   onSubmit,
   onToast,
   placeholder,
   preferences,
+  restoreRequest = null,
   updatePreferences,
 }: ComposerProps) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [contexts, setContexts] = useState<
+    Array<ComposerContextBlock & { id: string }>
+  >([]);
   const [listening, setListening] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const textarea = useRef<HTMLTextAreaElement>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
+  const nextContextId = useRef(0);
+  const lastRestoreRequest = useRef<string | null>(null);
+  const {
+    controlsRef: compactControlsRef,
+    multiline: compactMultiline,
+    rowRef: compactRowRef,
+    textareaRef: textarea,
+  } = useCompactComposerLayout(compact, text);
 
   useEffect(() => {
-    const node = textarea.current;
-    if (!node) {
+    if (
+      !restoreRequest ||
+      lastRestoreRequest.current === restoreRequest.requestId
+    ) {
       return;
     }
-    node.style.height = "0px";
-    node.style.height = `${Math.min(node.scrollHeight, compact ? 132 : 180)}px`;
-  }, [compact, text]);
+    lastRestoreRequest.current = restoreRequest.requestId;
+    if (text.trim() || attachments.length > 0 || contexts.length > 0) {
+      onToast(
+        "Finish or clear the current draft before editing a queued prompt.",
+      );
+      onRestoreRequestHandled?.(restoreRequest.requestId, false);
+      return;
+    }
+    setText(restoreRequest.submission.text);
+    setAttachments([...restoreRequest.submission.attachments]);
+    setContexts(
+      restoreRequest.submission.contexts.map((context) => ({
+        ...context,
+        id: `context-${nextContextId.current++}`,
+      })),
+    );
+    onRestoreRequestHandled?.(restoreRequest.requestId, true);
+    window.requestAnimationFrame(() => {
+      textarea.current?.focus();
+      if (textarea.current) {
+        const position = textarea.current.value.length;
+        textarea.current.setSelectionRange(position, position);
+      }
+    });
+  }, [
+    attachments.length,
+    contexts.length,
+    onRestoreRequestHandled,
+    onToast,
+    restoreRequest,
+    text,
+    textarea,
+  ]);
 
   useEffect(
     () => () => {
@@ -179,15 +237,23 @@ export function Composer({
 
   async function submit(): Promise<void> {
     const prompt = text.trim();
-    if (!prompt || disabled || submitting) {
+    if ((!prompt && contexts.length === 0) || disabled || submitting) {
       return;
     }
     setSubmitting(true);
     try {
-      const sent = await onSubmit(prompt, attachments);
+      const sent = await onSubmit({
+        attachments,
+        contexts: contexts.map(({ text: contextText, title }) => ({
+          text: contextText,
+          title,
+        })),
+        text: prompt,
+      });
       if (sent !== false) {
         setText("");
         setAttachments([]);
+        setContexts([]);
       }
     } catch (error) {
       onToast(error instanceof Error ? error.message : String(error));
@@ -253,9 +319,62 @@ export function Composer({
     }
   }
 
+  function captureLongContext(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const pasted = event.clipboardData.getData("text/plain");
+    if (!isLongContext(pasted)) return;
+    event.preventDefault();
+    const contextText = pasted.trim();
+    setContexts((current) => [
+      ...current,
+      {
+        id: `context-${nextContextId.current++}`,
+        text: contextText,
+        title: contextTitle(contextText),
+      },
+    ]);
+  }
+
+  function revealContext(context: ComposerContextBlock & { id: string }) {
+    const revealedText = `${context.text}${text.trim() ? `\n\n${text}` : ""}`;
+    if (revealedText.length > MAX_PROMPT_CHARACTERS) {
+      onToast(
+        "The context is too large to reveal without truncating the draft.",
+      );
+      return;
+    }
+    setContexts((current) =>
+      current.filter((candidate) => candidate.id !== context.id),
+    );
+    setText(revealedText);
+    window.requestAnimationFrame(() => {
+      textarea.current?.focus();
+      textarea.current?.setSelectionRange(0, 0);
+      if (textarea.current) textarea.current.scrollTop = 0;
+    });
+  }
+
+  const contextCards = contexts.length ? (
+    <div aria-label="Pasted context" className="context-block-strip">
+      {contexts.map((context) => (
+        <ComposerContextCard
+          context={context}
+          key={context.id}
+          onRemove={() =>
+            setContexts((current) =>
+              current.filter((candidate) => candidate.id !== context.id),
+            )
+          }
+          onReveal={() => revealContext(context)}
+        />
+      ))}
+    </div>
+  ) : null;
+  const hasDraft = Boolean(text.trim() || contexts.length > 0);
+
   if (compact) {
     return (
       <div className={`composer composer-compact ${active ? "is-active" : ""}`}>
+        {contextCards}
         {attachments.length > 0 ? (
           <div className="attachment-strip" aria-label="Attached files">
             {attachments.map((path) => (
@@ -275,7 +394,10 @@ export function Composer({
             ))}
           </div>
         ) : null}
-        <div className="compact-composer-row">
+        <div
+          className={`compact-composer-row ${compactMultiline ? "multiline" : ""}`}
+          ref={compactRowRef}
+        >
           <button
             aria-label="Add agents, context, tools"
             aria-haspopup="menu"
@@ -309,27 +431,46 @@ export function Composer({
                 void submit();
               }
             }}
+            onPaste={captureLongContext}
             placeholder="Send follow-up"
             rows={1}
             value={text}
           />
-          <div className="compact-composer-controls">
+          <div className="compact-composer-controls" ref={compactControlsRef}>
             <ComposerModelControls
               compact
+              disabled={active}
               models={models}
               preferences={preferences}
               updatePreferences={updatePreferences}
             />
-            <LockKeyhole aria-hidden="true" size={12} />
-            {active ? (
+            {active && hasDraft ? (
+              <>
+                <button
+                  aria-label="Stop generation"
+                  className="compact-stop-button"
+                  onClick={onInterrupt}
+                >
+                  <Square fill="currentColor" size={10} />
+                </button>
+                <button
+                  aria-label="Queue prompt"
+                  className="compact-voice-button"
+                  disabled={disabled || submitting}
+                  onClick={() => void submit()}
+                >
+                  <ArrowUp size={18} strokeWidth={2.4} />
+                </button>
+              </>
+            ) : active ? (
               <button
-                aria-label="Stop task"
+                aria-label="Stop generation"
                 className="compact-voice-button stop"
                 onClick={onInterrupt}
               >
                 <Square fill="currentColor" size={11} />
               </button>
-            ) : text.trim() ? (
+            ) : hasDraft ? (
               <button
                 aria-label="Send prompt"
                 className="compact-voice-button"
@@ -360,6 +501,7 @@ export function Composer({
     <div
       className={`composer ${compact ? "composer-compact" : ""} ${active ? "is-active" : ""}`}
     >
+      {contextCards}
       {attachments.length > 0 ? (
         <div className="attachment-strip" aria-label="Attached files">
           {attachments.map((path) => (
@@ -398,6 +540,7 @@ export function Composer({
             void submit();
           }
         }}
+        onPaste={captureLongContext}
         placeholder={
           placeholder ??
           (active ? "Send follow-up" : "Plan, build, or ask anything")
@@ -425,22 +568,40 @@ export function Composer({
             />
           ) : null}
           <ComposerModelControls
+            disabled={active}
             models={models}
             preferences={preferences}
             updatePreferences={updatePreferences}
           />
-          <LockKeyhole aria-hidden="true" size={11} />
         </div>
         <div className="composer-actions">
-          {active ? (
+          {active && hasDraft ? (
+            <>
+              <button
+                aria-label="Stop generation"
+                className="send-button-secondary"
+                onClick={onInterrupt}
+              >
+                <Square fill="currentColor" size={10} />
+              </button>
+              <button
+                aria-label="Queue prompt"
+                className="send-button"
+                disabled={disabled || submitting}
+                onClick={() => void submit()}
+              >
+                <ArrowUp size={17} strokeWidth={2.4} />
+              </button>
+            </>
+          ) : active ? (
             <button
-              aria-label="Stop task"
+              aria-label="Stop generation"
               className="send-button stop"
               onClick={onInterrupt}
             >
               <Square fill="currentColor" size={11} />
             </button>
-          ) : text.trim() ? (
+          ) : hasDraft ? (
             <button
               aria-label="Send prompt"
               className="send-button"

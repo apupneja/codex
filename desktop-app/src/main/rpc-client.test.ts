@@ -162,6 +162,11 @@ describe("AppServerRpcClient", () => {
           type: "userMessage",
         },
         {
+          content: ["The visible reasoning trace remains independently open."],
+          summary: ["Verified the workflow state."],
+          type: "reasoning",
+        },
+        {
           text: "The mock coding workflow completed successfully.",
           type: "agentMessage",
         },
