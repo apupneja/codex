@@ -11,6 +11,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { JsonObject, JsonValue, ServerRequest } from "../../shared/types";
+import { Select } from "../design-system";
 
 type ApprovalDialogProps = {
   fileChanges?: JsonValue;
@@ -678,40 +679,41 @@ export function ApprovalDialog({
                   })}
                 </fieldset>
               ) : options.length ? (
-                <select
+                <Select
                   aria-invalid={Boolean(error)}
                   aria-label={label}
-                  onChange={(event) =>
+                  onChange={(value) =>
                     setAnswers((current) => ({
                       ...current,
-                      [key]: event.target.value,
+                      [key]: value,
                     }))
                   }
+                  options={[
+                    { label: "Choose…", value: "" },
+                    ...options.map((option) => ({
+                      label: option.label,
+                      value: option.value,
+                    })),
+                  ]}
                   value={answers[key] ?? ""}
-                >
-                  <option value="">Choose…</option>
-                  {options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                />
               ) : field.type === "boolean" ? (
-                <select
+                <Select
                   aria-invalid={Boolean(error)}
                   aria-label={label}
-                  onChange={(event) =>
+                  onChange={(value) =>
                     setAnswers((current) => ({
                       ...current,
-                      [key]: event.target.value,
+                      [key]: value,
                     }))
                   }
+                  options={[
+                    { label: "Choose…", value: "" },
+                    { label: "Yes", value: "true" },
+                    { label: "No", value: "false" },
+                  ]}
                   value={answers[key] ?? ""}
-                >
-                  <option value="">Choose…</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
+                />
               ) : (
                 <input
                   aria-invalid={Boolean(error)}

@@ -5,6 +5,11 @@ import { useEffect, useRef } from "react";
 import "@xterm/xterm/css/xterm.css";
 
 import type { RuntimeStatus } from "../../shared/types";
+import {
+  cssToken,
+  monospaceFontFamily,
+  terminalFontSize,
+} from "../design-system";
 import { decodeBase64, encodeBase64 } from "../lib/encoding";
 
 const MAX_PENDING_INPUT_BYTES = 1024 * 1024;
@@ -19,10 +24,11 @@ type QueuedInput = {
 
 type TerminalPanelProps = {
   cwd: string | null;
+  fontSize: number;
   runtime: RuntimeStatus;
 };
 
-export function TerminalPanel({ cwd, runtime }: TerminalPanelProps) {
+export function TerminalPanel({ cwd, fontSize, runtime }: TerminalPanelProps) {
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,22 +51,22 @@ export function TerminalPanel({ cwd, runtime }: TerminalPanelProps) {
       allowProposedApi: false,
       cursorBlink: true,
       cursorStyle: "bar",
-      fontFamily: '"SFMono-Regular", "Cascadia Code", Consolas, monospace',
-      fontSize: 12,
-      lineHeight: 1.35,
+      fontFamily: monospaceFontFamily(),
+      fontSize: terminalFontSize(fontSize),
+      lineHeight: 1.2,
       scrollback: 5_000,
       theme: {
-        background: "#0d0e0f",
-        foreground: "#d5d5d1",
-        cursor: "#f2f0e9",
-        black: "#1a1b1d",
-        red: "#e16a72",
-        green: "#7bb47f",
+        background: cssToken("--bg-deep", "#141414"),
+        foreground: cssToken("--text", "#d7d7d7"),
+        cursor: cssToken("--text-bright", "#f2f2f2"),
+        black: cssToken("--bg", "#1a1a1a"),
+        red: cssToken("--danger", "#df7579"),
+        green: cssToken("--addition", "#73b67b"),
         yellow: "#d6ac63",
         blue: "#79a7d8",
         magenta: "#b18ad4",
         cyan: "#6eb4b0",
-        white: "#d8d8d4",
+        white: cssToken("--text-bright", "#f2f2f2"),
       },
     });
     const fit = new FitAddon();
@@ -246,7 +252,7 @@ export function TerminalPanel({ cwd, runtime }: TerminalPanelProps) {
         .catch(() => undefined);
       terminal.dispose();
     };
-  }, [cwd, runtime]);
+  }, [cwd, fontSize, runtime]);
 
   if (!cwd) {
     return (

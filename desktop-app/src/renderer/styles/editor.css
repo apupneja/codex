@@ -1,0 +1,427 @@
+.change-review-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+
+.change-review-header {
+  border-bottom: 1px solid var(--border);
+  flex: none;
+  padding: 11px 12px 0;
+}
+
+.change-review-status {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+  min-width: 0;
+}
+
+.change-review-status > span {
+  background: var(--success-surface);
+  border-radius: var(--radius-pill);
+  color: var(--success-text);
+  font-size: var(--font-size-caption);
+  padding: 3px 7px;
+}
+
+.change-review-branch {
+  align-items: center;
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  font-size: var(--font-size-caption);
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.change-review-header h2 {
+  color: var(--text-bright);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-medium);
+  margin: 12px 0 8px;
+}
+
+.change-review-header nav {
+  display: flex;
+  gap: 20px;
+}
+
+.change-review-header nav span {
+  color: var(--muted);
+  font-size: var(--font-size-meta);
+  padding: 7px 0 9px;
+  position: relative;
+}
+
+.change-review-header nav span.active {
+  color: var(--text-bright);
+}
+
+.change-review-header nav span.active::after {
+  background: var(--text-dim);
+  bottom: 0;
+  content: "";
+  height: 1px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.change-review-panel > .unified-diff {
+  flex: 1;
+  min-height: 0;
+}
+
+.change-review-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+  scroll-padding-top: 8px;
+}
+
+.change-review-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  flex: none;
+  min-width: 0;
+  overflow: hidden;
+  scroll-margin-top: 8px;
+  transition:
+    border-color var(--transition-control),
+    box-shadow var(--transition-control);
+}
+
+.change-review-card.selected {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.change-review-card-header {
+  align-items: center;
+  background: var(--panel-soft);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 8px 0 4px;
+}
+
+.change-review-card-header > button:first-child {
+  align-items: center;
+  background: transparent;
+  color: var(--text-dim);
+  display: flex;
+  flex: 1;
+  font-size: var(--font-size-caption);
+  gap: 5px;
+  min-width: 0;
+  padding: 5px 2px;
+  text-align: left;
+}
+
+.change-review-card-header > button:first-child span {
+  direction: rtl;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.change-review-card-header svg {
+  flex: none;
+  transition: transform var(--transition-control);
+}
+
+.change-review-card-header svg.collapsed {
+  transform: rotate(-90deg);
+}
+
+.change-review-card-header .copy-change-path {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+  display: flex;
+  height: 22px;
+  justify-content: center;
+  opacity: 0;
+  padding: 0;
+  width: 22px;
+}
+
+.change-review-card-header:hover .copy-change-path,
+.copy-change-path:focus-visible {
+  opacity: 1;
+}
+
+.change-review-card-header b {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+}
+
+.change-review-card-header small {
+  color: var(--muted);
+  font-size: var(--font-size-caption);
+  text-transform: capitalize;
+}
+
+.change-review-diff {
+  counter-reset: diff-line;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  line-height: 1.55;
+  margin: 0;
+  overflow: auto;
+  user-select: text;
+}
+
+.diff-line {
+  counter-increment: diff-line;
+  display: block;
+  min-height: 1.55em;
+  padding: 0 8px 0 40px;
+  position: relative;
+  white-space: pre;
+}
+
+.diff-line::before {
+  color: var(--muted);
+  content: counter(diff-line);
+  left: 0;
+  opacity: 0.55;
+  padding-right: 8px;
+  position: absolute;
+  text-align: right;
+  width: 32px;
+}
+
+.diff-addition {
+  background: var(--success-surface);
+  color: var(--success-text);
+}
+
+.diff-deletion {
+  background: var(--deletion-surface);
+  color: var(--deletion-text);
+}
+
+.diff-hunk,
+.diff-meta {
+  background: var(--info-surface);
+  color: var(--info-text);
+}
+
+.editor-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.editor-toolbar {
+  align-items: center;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  flex: 0 0 29px;
+  font-size: var(--font-size-caption);
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 7px 0 10px;
+}
+
+.editor-toolbar > span {
+  direction: rtl;
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.external-change-warning {
+  color: var(--warning);
+  flex: none;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+.editor-toolbar button {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-xs);
+  color: var(--text-dim);
+  display: flex;
+  flex: none;
+  font-size: var(--font-size-caption);
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px;
+}
+
+.editor-toolbar button:hover:not(:disabled) {
+  background: var(--elevated-hover);
+  color: var(--text-bright);
+}
+
+.editor-toolbar button:disabled {
+  opacity: 0.35;
+}
+
+.file-explorer {
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex: 0 0 clamp(175px, 22vw, 245px);
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.file-explorer-surface {
+  border-left: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-explorer-surface .explorer-heading {
+  border-bottom: 1px solid var(--border);
+  font-size: var(--font-size-caption);
+  min-height: 35px;
+  padding-inline: 12px 9px;
+}
+
+.file-explorer-surface .explorer-search {
+  margin: 8px 10px 6px;
+}
+
+.file-explorer-surface .file-tree {
+  padding: 2px 4px 10px;
+}
+
+.explorer-empty strong {
+  color: var(--text-bright);
+  font-size: var(--font-size-control);
+}
+
+.explorer-empty span {
+  max-width: 260px;
+  text-align: center;
+}
+
+.explorer-heading {
+  align-items: center;
+  display: flex;
+  flex: 0 0 31px;
+  font-size: var(--font-size-caption);
+  justify-content: space-between;
+  padding: 0 7px 0 10px;
+  text-transform: uppercase;
+}
+
+.explorer-heading strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-heading button {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+  display: flex;
+  height: 21px;
+  justify-content: center;
+  width: 21px;
+}
+
+.explorer-search {
+  align-items: center;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  gap: 5px;
+  height: 25px;
+  margin: 0 6px 6px;
+  padding: 0 6px;
+}
+
+.explorer-search input {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font-size: var(--font-size-caption);
+  min-width: 0;
+  outline: 0;
+  width: 100%;
+}
+
+.file-tree {
+  flex: 1;
+  overflow: auto;
+  padding: 2px 0 10px;
+}
+
+.file-tree-row {
+  align-items: center;
+  background: transparent;
+  color: var(--text-dim);
+  display: flex;
+  font-size: var(--font-size-caption);
+  gap: 4px;
+  height: 23px;
+  padding-right: 7px;
+  text-align: left;
+  width: 100%;
+}
+
+.file-tree-row:hover {
+  background: var(--overlay-subtle);
+  color: var(--text-bright);
+}
+
+.file-tree-row .tree-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-error {
+  color: var(--danger);
+  font-size: var(--font-size-caption);
+  margin-left: auto;
+}
+
+.file-tree-row .spin {
+  margin-left: auto;
+}
+
+.tree-spacer {
+  width: 12px;
+}
+
+.terminal-container {
+  height: 100%;
+  padding: var(--space-3) 5px 5px 7px;
+  width: 100%;
+}
+
+.terminal-container .xterm {
+  height: 100%;
+}

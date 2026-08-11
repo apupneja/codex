@@ -58,7 +58,12 @@ export type RuntimeStatus = {
   initialized?: InitializeResponse;
 };
 
-export type DesktopTheme = "dark" | "light" | "system";
+export type DesktopTheme =
+  | "dark"
+  | "dark-high-contrast"
+  | "light"
+  | "light-colorblind"
+  | "system";
 
 export type DesktopPreferences = {
   approvalPolicy: "untrusted" | "on-request" | "never";
@@ -71,12 +76,47 @@ export type DesktopPreferences = {
   selectedModel: string | null;
   sidebarOpen: boolean;
   theme: DesktopTheme;
+  uiFontSize: number;
 };
 
 export type DirectoryEntry = {
   fileName: string;
   isDirectory: boolean;
   isFile: boolean;
+};
+
+export type ManagedWorktree = {
+  modifiedAtMs: number;
+  path: string;
+};
+
+export type ComposerContextBlock = {
+  text: string;
+  title: string;
+};
+
+export type PromptSubmission = {
+  attachments: string[];
+  contexts: ComposerContextBlock[];
+  text: string;
+};
+
+export type EmbeddedBrowserAction = "back" | "forward" | "reload" | "stop";
+
+export type EmbeddedBrowserBounds = {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+};
+
+export type EmbeddedBrowserState = {
+  canGoBack: boolean;
+  canGoForward: boolean;
+  error: string | null;
+  loading: boolean;
+  title: string;
+  url: string;
 };
 
 export type OpenDocument = {
@@ -111,22 +151,44 @@ export type DesktopEvent =
   | { type: "server-request"; payload: ServerRequest | RpcRequest }
   | { type: "runtime"; payload: RuntimeStatus };
 
+export type DesktopAppAction =
+  | "open-logs-folder"
+  | "open-skill-logs"
+  | "open-ssh-config"
+  | "reload-window"
+  | "toggle-developer-tools";
+
 export type DesktopApi = {
   chooseFiles(): Promise<string[]>;
   chooseWorkspace(): Promise<string | null>;
+  ensureEmbeddedBrowser(initialUrl?: string): Promise<EmbeddedBrowserState>;
   getPreferences(): Promise<DesktopPreferences>;
+  listManagedWorktrees(): Promise<ManagedWorktree[]>;
+  navigateEmbeddedBrowser(input: string): Promise<EmbeddedBrowserState>;
   notify(method: string, params?: JsonObject): Promise<void>;
+  onEmbeddedBrowserState(
+    listener: (state: EmbeddedBrowserState) => void,
+  ): () => void;
   onEvent(listener: (event: DesktopEvent) => void): () => void;
   onShortcut(listener: (shortcut: string) => void): () => void;
   onTerminalOutput(listener: (batch: TerminalOutputBatch) => void): () => void;
   openExternal(url: string): Promise<void>;
+  performAppAction(action: DesktopAppAction): Promise<void>;
+  performEmbeddedBrowserAction(
+    action: EmbeddedBrowserAction,
+  ): Promise<EmbeddedBrowserState>;
   request<T = JsonValue>(method: string, params?: JsonObject): Promise<T>;
   restartRuntime(): Promise<void>;
   respond(id: RpcId, result: JsonValue): Promise<void>;
   revealPath(path: string): Promise<void>;
+  setWorkspacePanelVisibility(options: {
+    sidebarMode: "hidden" | "inline" | "overlay";
+    visibility: "closed" | "open";
+  }): Promise<void>;
   setPreferences(
     patch: Partial<DesktopPreferences>,
   ): Promise<DesktopPreferences>;
+  setEmbeddedBrowserBounds(bounds: EmbeddedBrowserBounds | null): Promise<void>;
   acknowledgeTerminalOutput(processId: string, sequence: number): void;
   setUnsavedChanges(hasChanges: boolean): void;
   signalSmokeReady(): void;

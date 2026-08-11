@@ -1,4 +1,4 @@
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -11,6 +11,7 @@ import {
   nativeTheme,
   net,
   protocol,
+  screen,
   session,
   shell,
   webContents,
@@ -18,19 +19,26 @@ import {
 
 import type {
   DesktopEvent,
+  DesktopAppAction,
   DesktopPreferences,
+  DesktopTheme,
+  EmbeddedBrowserAction,
+  EmbeddedBrowserBounds,
   JsonObject,
   JsonValue,
+  ManagedWorktree,
   RuntimeStatus,
   RpcNotification,
   RpcRequest,
   ServerRequest,
 } from "../shared/types";
 import { isAllowedPreviewUrl, validatePreviewUrl } from "../shared/preview-url";
+import { EmbeddedBrowserHost } from "./embedded-browser";
 import { PreferencesStore } from "./preferences";
 import { RendererRequestPolicy } from "./request-policy";
 import { AppServerRpcClient } from "./rpc-client";
 import { resolveLaunchCommand } from "./runtime";
+import { harnessSmokeRequested, runHarnessSmoke } from "./smoke-harness";
 import {
   serverRequestKey,
   validatePendingServerResponse,
@@ -40,6 +48,7 @@ import {
   TerminalOutputBroker,
   type TerminalOutputFailure,
 } from "./terminal-output";
+import { exerciseWorkspaceDock } from "./workspace-dock-smoke";
 
 const APP_NAME = "Codex Desktop";
 const RPC_METHODS = new Set([
@@ -82,8 +91,51 @@ const RPC_METHODS = new Set([
 ]);
 const NOTIFICATION_METHODS = new Set(["initialized"]);
 const MAX_TERMINAL_PROCESSES_PER_RENDERER = 4;
+const EMBEDDED_BROWSER_ACTIONS = new Set<EmbeddedBrowserAction>([
+  "back",
+  "forward",
+  "reload",
+  "stop",
+]);
+
+function nativeThemeSource(theme: DesktopTheme): "dark" | "light" | "system" {
+  if (theme === "dark-high-contrast") return "dark";
+  if (theme === "light-colorblind") return "light";
+  return theme;
+}
+
+async function listManagedWorktrees(): Promise<ManagedWorktree[]> {
+  const root = join(app.getPath("home"), ".cursor", "worktrees");
+  try {
+    const projects = await readdir(root, { withFileTypes: true });
+    const worktrees: ManagedWorktree[] = [];
+    for (const project of projects) {
+      if (!project.isDirectory() || worktrees.length >= 100) continue;
+      const projectPath = join(root, project.name);
+      const entries = await readdir(projectPath, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory() || worktrees.length >= 100) continue;
+        const worktreePath = join(projectPath, entry.name);
+        const metadata = await stat(worktreePath);
+        worktrees.push({
+          modifiedAtMs: metadata.mtimeMs,
+          path: worktreePath,
+        });
+      }
+    }
+    return worktrees.sort(
+      (left, right) => right.modifiedAtMs - left.modifiedAtMs,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
 
 let mainWindow: BrowserWindow | null = null;
+let embeddedBrowser: EmbeddedBrowserHost | null = null;
+let windowWidthAfterWorkspaceGrow: number | null = null;
+let windowWidthBeforeWorkspaceGrow: number | null = null;
 let preferences: PreferencesStore;
 let rpc = new AppServerRpcClient();
 let runtimeGeneration = 1;
@@ -98,6 +150,7 @@ let windowClosePromptOpen = false;
 let pendingDeepLink: string | null = null;
 let stderrBuffer = "";
 let currentRuntimeStatus: RuntimeStatus = { phase: "starting" };
+let smokeCaptureStarted = false;
 const pendingServerRequests = new Map<string, ServerRequest | RpcRequest>();
 const requestPolicy = new RendererRequestPolicy();
 const runtimeRestart = new SingleFlight<void>();
@@ -589,9 +642,103 @@ function configureIpc(): void {
     ]);
     return saved;
   });
+  ipcMain.handle("worktrees:list", async (event) => {
+    assertTrustedSender(event);
+    return listManagedWorktrees();
+  });
+  ipcMain.handle("embeddedBrowser:ensure", async (event, rawUrl: unknown) => {
+    assertTrustedSender(event);
+    if (
+      rawUrl !== undefined &&
+      (typeof rawUrl !== "string" || rawUrl.length > 32_768)
+    ) {
+      throw new TypeError("Embedded browser URL must be a string");
+    }
+    if (!embeddedBrowser) throw new Error("Embedded browser is unavailable");
+    return embeddedBrowser.ensure(rawUrl);
+  });
+  ipcMain.handle(
+    "embeddedBrowser:navigate",
+    async (event, rawInput: unknown) => {
+      assertTrustedSender(event);
+      if (typeof rawInput !== "string" || rawInput.length > 32_768) {
+        throw new TypeError("Embedded browser input must be a URL or search");
+      }
+      if (!embeddedBrowser) throw new Error("Embedded browser is unavailable");
+      return embeddedBrowser.navigate(rawInput);
+    },
+  );
+  ipcMain.handle(
+    "embeddedBrowser:performAction",
+    async (event, rawAction: unknown) => {
+      assertTrustedSender(event);
+      if (
+        typeof rawAction !== "string" ||
+        !EMBEDDED_BROWSER_ACTIONS.has(rawAction as EmbeddedBrowserAction)
+      ) {
+        throw new TypeError("Invalid embedded browser action");
+      }
+      if (!embeddedBrowser) throw new Error("Embedded browser is unavailable");
+      return embeddedBrowser.perform(rawAction as EmbeddedBrowserAction);
+    },
+  );
+  ipcMain.handle(
+    "embeddedBrowser:setBounds",
+    async (event, rawBounds: unknown) => {
+      assertTrustedSender(event);
+      if (rawBounds !== null && !isPlainObject(rawBounds)) {
+        throw new TypeError(
+          "Embedded browser bounds must be an object or null",
+        );
+      }
+      if (!embeddedBrowser) throw new Error("Embedded browser is unavailable");
+      embeddedBrowser.setBounds(
+        rawBounds as unknown as EmbeddedBrowserBounds | null,
+      );
+    },
+  );
   ipcMain.handle("runtime:restart", async (event) => {
     assertTrustedSender(event);
     await restartRuntime();
+  });
+  ipcMain.handle("app:performAction", async (event, rawAction: unknown) => {
+    assertTrustedSender(event);
+    const allowedActions = new Set<DesktopAppAction>([
+      "open-logs-folder",
+      "open-skill-logs",
+      "open-ssh-config",
+      "reload-window",
+      "toggle-developer-tools",
+    ]);
+    if (
+      typeof rawAction !== "string" ||
+      !allowedActions.has(rawAction as DesktopAppAction)
+    ) {
+      throw new TypeError("Invalid app action");
+    }
+    const action = rawAction as DesktopAppAction;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    switch (action) {
+      case "reload-window":
+        mainWindow.webContents.reload();
+        return;
+      case "toggle-developer-tools":
+        mainWindow.webContents.toggleDevTools();
+        return;
+      case "open-logs-folder":
+      case "open-skill-logs": {
+        const error = await shell.openPath(app.getPath("logs"));
+        if (error) throw new Error(error);
+        return;
+      }
+      case "open-ssh-config": {
+        const error = await shell.openPath(
+          join(app.getPath("home"), ".ssh", "config"),
+        );
+        if (error) throw new Error(error);
+        return;
+      }
+    }
   });
   ipcMain.handle(
     "preferences:set",
@@ -630,7 +777,7 @@ function configureIpc(): void {
         sanitizedPatch.recentWorkspaces = canonicalWorkspaces;
       }
       const next = await preferences.update(sanitizedPatch);
-      nativeTheme.themeSource = next.theme;
+      nativeTheme.themeSource = nativeThemeSource(next.theme);
       return next;
     },
   );
@@ -672,6 +819,62 @@ function configureIpc(): void {
     await requestPolicy.grantAttachments(event.sender.id, selected);
     return selected;
   });
+  ipcMain.handle(
+    "workspace:setPanelVisibility",
+    async (event, rawOptions: unknown) => {
+      assertTrustedSender(event);
+      if (!isPlainObject(rawOptions)) {
+        throw new TypeError("Workspace panel options must be an object");
+      }
+      const visibility = rawOptions.visibility;
+      const sidebarMode = rawOptions.sidebarMode;
+      if (
+        (visibility !== "open" && visibility !== "closed") ||
+        (sidebarMode !== "hidden" &&
+          sidebarMode !== "inline" &&
+          sidebarMode !== "overlay")
+      ) {
+        throw new TypeError("Invalid workspace panel options");
+      }
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+
+      const bounds = mainWindow.getBounds();
+      if (visibility === "closed") {
+        embeddedBrowser?.setBounds(null);
+        if (
+          windowWidthBeforeWorkspaceGrow !== null &&
+          windowWidthAfterWorkspaceGrow === bounds.width
+        ) {
+          mainWindow.setBounds(
+            { ...bounds, width: windowWidthBeforeWorkspaceGrow },
+            /* animate */ true,
+          );
+        }
+        windowWidthAfterWorkspaceGrow = null;
+        windowWidthBeforeWorkspaceGrow = null;
+        return;
+      }
+
+      const sidebarWidth = sidebarMode === "inline" ? 260 : 0;
+      const editorPanelWidth = 522;
+      const centerPanelMinimumWidth = 424;
+      const needsResize =
+        bounds.width - sidebarWidth - editorPanelWidth <
+        centerPanelMinimumWidth;
+      if (!needsResize || windowWidthBeforeWorkspaceGrow !== null) return;
+
+      const workArea = screen.getDisplayMatching(bounds).workArea;
+      const availableWidth = workArea.x + workArea.width - bounds.x;
+      const nextWidth = Math.min(
+        bounds.width + editorPanelWidth,
+        availableWidth,
+      );
+      if (nextWidth <= bounds.width) return;
+      windowWidthBeforeWorkspaceGrow = bounds.width;
+      windowWidthAfterWorkspaceGrow = nextWidth;
+      mainWindow.setBounds({ ...bounds, width: nextWidth }, /* animate */ true);
+    },
+  );
   ipcMain.handle("shell:openExternal", async (event, rawUrl: unknown) => {
     assertTrustedSender(event);
     if (typeof rawUrl !== "string") {
@@ -696,22 +899,40 @@ function configureIpc(): void {
   });
   ipcMain.on("desktop:smoke-ready", async (event) => {
     assertTrustedSender(event);
+    if (harnessSmokeRequested()) {
+      return;
+    }
     const destination = process.env.CODEX_DESKTOP_SMOKE_OUTPUT;
     if (!destination || !mainWindow) {
       return;
     }
+    if (smokeCaptureStarted) return;
+    smokeCaptureStarted = true;
+    if (process.env.CODEX_DESKTOP_SMOKE_PREVIEW_URL) {
+      try {
+        await exerciseWorkspaceDock(mainWindow);
+      } catch (error) {
+        console.error("Desktop workspace dock smoke failed", error);
+        app.exit(1);
+        return;
+      }
+    }
     const renderedReady = await mainWindow.webContents.executeJavaScript(
       process.env.CODEX_DESKTOP_SMOKE_PREVIEW_URL
-        ? `Boolean(document.querySelector(".app-shell") && document.querySelector(".conversation-content .turn") && !document.querySelector(".conversation-loading") && document.querySelector(".preview-viewport iframe") && !document.querySelector(".preview-loading"))`
-        : `Boolean(document.querySelector(".app-shell") && (document.querySelector(".new-task-view") || document.querySelector(".conversation-view")))`,
+        ? `(() => { const panel = document.querySelector(".workspace-panel:not(.workspace-panel-hidden)")?.getBoundingClientRect(); return Boolean(document.querySelector(".app-shell") && document.querySelector(".conversation-content .turn") && !document.querySelector(".conversation-loading") && document.querySelector('.workspace-tool-tab.active')?.textContent?.trim() === "Browser" && document.querySelector('.embedded-browser-viewport[data-ready="true"]') && !document.querySelector(".workspace-dock-rail") && panel && Math.abs(panel.right - window.innerWidth) < 1); })()`
+        : `(() => { const workspace = document.querySelector(".main-workspace")?.getBoundingClientRect(); return Boolean(document.querySelector(".app-shell") && (document.querySelector(".new-task-view") || document.querySelector(".conversation-view")) && !document.querySelector(".workspace-dock-rail") && workspace && Math.abs(workspace.right - window.innerWidth) < 1); })()`,
       true,
     );
     if (renderedReady !== true) {
-      console.error("Desktop smoke readiness assertion failed");
+      const layout = await mainWindow.webContents.executeJavaScript(
+        `(() => { const selectors = ['.app-shell', '.main-workspace', '.conversation-view', '.workspace-panel']; return { innerWidth: window.innerWidth, elements: Object.fromEntries(selectors.map((selector) => { const rect = document.querySelector(selector)?.getBoundingClientRect(); return [selector, rect ? { left: rect.left, right: rect.right, width: rect.width } : null]; })) }; })()`,
+        true,
+      );
+      console.error("Desktop smoke readiness assertion failed", layout);
       app.exit(1);
       return;
     }
-    const image = await mainWindow.webContents.capturePage();
+    const image = await mainWindow.capturePage();
     await mkdir(dirname(destination), { recursive: true }).catch(
       () => undefined,
     );
@@ -825,13 +1046,13 @@ async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
     width: visualRegressionCapture ? 1_361 : 1_440,
     height: visualRegressionCapture ? 881 : 900,
-    minWidth: 1_040,
+    minWidth: 500,
     minHeight: 680,
     show: false,
     backgroundColor: "#101112",
     title: APP_NAME,
-    titleBarStyle: isMac ? "hiddenInset" : "default",
-    ...(isMac ? { trafficLightPosition: { x: 14, y: 15 } } : {}),
+    titleBarStyle: isMac ? "hidden" : "default",
+    ...(isMac ? { titleBarOverlay: true } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -841,6 +1062,7 @@ async function createWindow(): Promise<void> {
       webSecurity: true,
     },
   });
+  embeddedBrowser = new EmbeddedBrowserHost(mainWindow);
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
       const protocol = new URL(url).protocol;
@@ -876,6 +1098,7 @@ async function createWindow(): Promise<void> {
   const rendererOwnerId = mainWindow.webContents.id;
   mainWindow.webContents.on("did-start-navigation", (details) => {
     if (details.isMainFrame && !details.isSameDocument) {
+      embeddedBrowser?.setBounds(null);
       cleanupRendererResources(rendererOwnerId);
     }
   });
@@ -920,6 +1143,8 @@ async function createWindow(): Promise<void> {
     });
   });
   mainWindow.on("closed", () => {
+    embeddedBrowser?.close();
+    embeddedBrowser = null;
     mainWindow = null;
   });
 
@@ -1077,12 +1302,14 @@ app.whenReady().then(async () => {
       callback({});
       return;
     }
-    const devConnect = developmentRendererUrl() ? " ws://127.0.0.1:*" : "";
+    const isDevelopmentRenderer = developmentRendererUrl() !== null;
+    const devScript = isDevelopmentRenderer ? " 'unsafe-inline'" : "";
+    const devConnect = isDevelopmentRenderer ? " ws://127.0.0.1:*" : "";
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         "Content-Security-Policy": [
-          `default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self'${devConnect}; frame-src http://localhost:* https://localhost:* http://127.0.0.1:* https://127.0.0.1:* http://[::1]:* https://[::1]:*`,
+          `default-src 'self'; script-src 'self' blob:${devScript}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self'${devConnect}; frame-src http://localhost:* https://localhost:* http://127.0.0.1:* https://127.0.0.1:* http://[::1]:* https://[::1]:*`,
         ],
       },
     });
@@ -1090,12 +1317,20 @@ app.whenReady().then(async () => {
 
   preferences = new PreferencesStore(app.getPath("userData"));
   const savedPreferences = await preferences.load();
-  nativeTheme.themeSource = savedPreferences.theme;
+  nativeTheme.themeSource = nativeThemeSource(savedPreferences.theme);
   configureIpc();
   createMenu();
   wireRpcEvents(rpc, runtimeGeneration);
   await createWindow();
   void startRuntime(rpc, runtimeGeneration);
+  if (harnessSmokeRequested() && mainWindow) {
+    void runHarnessSmoke(mainWindow)
+      .then(() => app.quit())
+      .catch((error: unknown) => {
+        console.error("Desktop harness smoke failed", error);
+        app.exit(1);
+      });
+  }
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -12,6 +12,7 @@ describe("preferences", () => {
     const value = sanitizePreferences({
       approvalPolicy: "invalid",
       editorFontSize: 500,
+      uiFontSize: 4,
       lastWorkspace: null,
       recentWorkspaces: ["/repo", "/repo", "/other"],
       rightPanelOpen: true,
@@ -25,6 +26,7 @@ describe("preferences", () => {
     expect(value).toMatchObject({
       approvalPolicy: "on-request",
       editorFontSize: 24,
+      uiFontSize: 10,
       recentWorkspaces: ["/repo", "/other"],
       sandbox: "workspace-write",
       selectedEffort: "high",

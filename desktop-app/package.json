@@ -18,11 +18,12 @@
     "lint": "tsc --noEmit",
     "package": "node scripts/package.mjs",
     "package:dir": "node scripts/package.mjs --dir",
-    "smoke": "pnpm run build && node scripts/smoke.mjs",
+    "smoke": "pnpm run build && node scripts/smoke.mjs && node scripts/smoke-harness.mjs",
+    "smoke:harness": "pnpm run build && node scripts/smoke-harness.mjs",
     "smoke:packaged": "node scripts/smoke-packaged.mjs",
     "stage:runtime": "node scripts/stage-runtime.mjs --profile dev-small",
     "stage:runtime:release": "node scripts/stage-runtime.mjs --profile release",
-    "test": "vitest run && node --test scripts/release-identity.test.mjs",
+    "test": "vitest run && node --test scripts/release-identity.test.mjs scripts/app-server-harness.test.mjs",
     "test:watch": "vitest"
   },
   "devDependencies": {

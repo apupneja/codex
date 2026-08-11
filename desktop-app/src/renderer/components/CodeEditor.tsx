@@ -2,6 +2,7 @@ import Editor from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
 
 import type { DesktopPreferences, OpenDocument } from "../../shared/types";
+import { monospaceFontFamily } from "../design-system";
 import "../lib/monaco";
 
 type CodeEditorProps = {
@@ -45,7 +46,7 @@ export function CodeEditor({
       options={{
         automaticLayout: true,
         cursorBlinking: "smooth",
-        fontFamily: '"SFMono-Regular", "Cascadia Code", Consolas, monospace',
+        fontFamily: monospaceFontFamily(),
         fontLigatures: true,
         fontSize,
         minimap: { enabled: false },
@@ -57,7 +58,9 @@ export function CodeEditor({
       }}
       path={document.path}
       theme={
-        theme === "light" || (theme === "system" && !systemDark)
+        theme === "light" ||
+        theme === "light-colorblind" ||
+        (theme === "system" && !systemDark)
           ? "light"
           : "vs-dark"
       }

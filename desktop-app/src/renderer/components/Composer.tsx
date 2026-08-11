@@ -1,17 +1,30 @@
 import {
   ArrowUp,
-  AtSign,
-  ChevronDown,
-  LockKeyhole,
+  Bug,
+  ChevronRight,
+  CircleHelp,
+  ListTodo,
   Mic,
   Paperclip,
+  Plug,
   Plus,
   Square,
-  WandSparkles,
+  Workflow,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { ClipboardEvent } from "react";
 
-import type { DesktopPreferences, Model } from "../../shared/types";
+import type {
+  ComposerContextBlock,
+  DesktopPreferences,
+  Model,
+  PromptSubmission,
+} from "../../shared/types";
+import { MenuItem, MenuSurface } from "../design-system";
+import { contextTitle, isLongContext } from "../lib/promptContext";
+import { ComposerModelControls } from "./ComposerModelControls";
+import { ComposerContextCard } from "./ContextBlock";
+import { useCompactComposerLayout } from "./useCompactComposerLayout";
 
 type SpeechRecognitionEventLike = Event & {
   results: ArrayLike<{ 0: { transcript: string } }>;
@@ -38,31 +51,100 @@ type ComposerProps = {
   disabled?: boolean;
   models: Model[];
   onInterrupt(): void;
+  onRestoreRequestHandled?(requestId: string, restored: boolean): void;
   onSubmit(
-    text: string,
-    attachments: string[],
+    submission: PromptSubmission,
   ): boolean | void | Promise<boolean | void>;
   onToast(message: string): void;
+  placeholder?: string;
   preferences: DesktopPreferences;
+  restoreRequest?: ComposerRestoreRequest | null;
   updatePreferences(
     patch: Partial<DesktopPreferences>,
   ): Promise<DesktopPreferences>;
 };
 
-function effortLabel(effort: string): string {
-  const labels: Record<string, string> = {
-    none: "None",
-    minimal: "Minimal",
-    low: "Fast",
-    medium: "Balanced",
-    high: "Deep",
-    xhigh: "Max",
-    max: "Maximum",
-    ultra: "Ultra",
+export type ComposerRestoreRequest = {
+  requestId: string;
+  submission: PromptSubmission;
+};
+
+type ComposerToolsMenuProps = {
+  onClose(): void;
+  onFile(): void;
+  onToast(message: string): void;
+};
+
+function ComposerToolsMenu({
+  onClose,
+  onFile,
+  onToast,
+}: ComposerToolsMenuProps) {
+  const chooseMode = (mode: string) => {
+    onToast(`${mode} mode selected for the next task.`);
+    onClose();
   };
   return (
-    labels[effort] ??
-    effort.replace(/[-_]/g, " ").replace(/^./, (value) => value.toUpperCase())
+    <MenuSurface
+      aria-label="Add agents, context, tools"
+      className="composer-tools-menu"
+    >
+      <div className="composer-tools-search">
+        <input
+          aria-label="Search skills, context, chats"
+          placeholder="Search skills, context, chats..."
+        />
+      </div>
+      <div
+        aria-label="Add agents, context, tools"
+        className="composer-tools-menu-list"
+        role="listbox"
+      >
+        <MenuItem onClick={() => chooseMode("Plan")} role="option">
+          <ListTodo aria-hidden="true" size={12} />
+          <span>
+            Plan <small>Generate an implementation plan</small>
+          </span>
+        </MenuItem>
+        <MenuItem onClick={() => chooseMode("Debug")} role="option">
+          <Bug aria-hidden="true" size={12} />
+          <span>
+            Debug <small>Pinpoint the root cause of an issue</small>
+          </span>
+        </MenuItem>
+        <MenuItem onClick={() => chooseMode("Multitask")} role="option">
+          <Workflow aria-hidden="true" size={12} />
+          <span>
+            Multitask <small>Orchestrate multiple subagents in parallel</small>
+          </span>
+        </MenuItem>
+        <MenuItem onClick={() => chooseMode("Ask")} role="option">
+          <CircleHelp aria-hidden="true" size={12} />
+          <span>
+            Ask <small>Answer questions without making edits</small>
+          </span>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            onFile();
+            onClose();
+          }}
+          role="option"
+        >
+          <Paperclip aria-hidden="true" size={12} />
+          <span>File</span>
+        </MenuItem>
+        <MenuItem onClick={() => chooseMode("MCP")} role="option">
+          <Plug aria-hidden="true" size={12} />
+          <span>MCP</span>
+          <ChevronRight
+            aria-hidden="true"
+            className="composer-tools-menu-trailing"
+            size={12}
+          />
+        </MenuItem>
+      </div>
+    </MenuSurface>
   );
 }
 
@@ -72,26 +154,72 @@ export function Composer({
   disabled = false,
   models,
   onInterrupt,
+  onRestoreRequestHandled,
   onSubmit,
   onToast,
+  placeholder,
   preferences,
+  restoreRequest = null,
   updatePreferences,
 }: ComposerProps) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [contexts, setContexts] = useState<
+    Array<ComposerContextBlock & { id: string }>
+  >([]);
   const [listening, setListening] = useState(false);
-  const textarea = useRef<HTMLTextAreaElement>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
+  const nextContextId = useRef(0);
+  const lastRestoreRequest = useRef<string | null>(null);
+  const {
+    controlsRef: compactControlsRef,
+    multiline: compactMultiline,
+    rowRef: compactRowRef,
+    textareaRef: textarea,
+  } = useCompactComposerLayout(compact, text);
 
   useEffect(() => {
-    const node = textarea.current;
-    if (!node) {
+    if (
+      !restoreRequest ||
+      lastRestoreRequest.current === restoreRequest.requestId
+    ) {
       return;
     }
-    node.style.height = "0px";
-    node.style.height = `${Math.min(node.scrollHeight, compact ? 132 : 180)}px`;
-  }, [compact, text]);
+    lastRestoreRequest.current = restoreRequest.requestId;
+    if (text.trim() || attachments.length > 0 || contexts.length > 0) {
+      onToast(
+        "Finish or clear the current draft before editing a queued prompt.",
+      );
+      onRestoreRequestHandled?.(restoreRequest.requestId, false);
+      return;
+    }
+    setText(restoreRequest.submission.text);
+    setAttachments([...restoreRequest.submission.attachments]);
+    setContexts(
+      restoreRequest.submission.contexts.map((context) => ({
+        ...context,
+        id: `context-${nextContextId.current++}`,
+      })),
+    );
+    onRestoreRequestHandled?.(restoreRequest.requestId, true);
+    window.requestAnimationFrame(() => {
+      textarea.current?.focus();
+      if (textarea.current) {
+        const position = textarea.current.value.length;
+        textarea.current.setSelectionRange(position, position);
+      }
+    });
+  }, [
+    attachments.length,
+    contexts.length,
+    onRestoreRequestHandled,
+    onToast,
+    restoreRequest,
+    text,
+    textarea,
+  ]);
 
   useEffect(
     () => () => {
@@ -109,15 +237,23 @@ export function Composer({
 
   async function submit(): Promise<void> {
     const prompt = text.trim();
-    if (!prompt || disabled || submitting) {
+    if ((!prompt && contexts.length === 0) || disabled || submitting) {
       return;
     }
     setSubmitting(true);
     try {
-      const sent = await onSubmit(prompt, attachments);
+      const sent = await onSubmit({
+        attachments,
+        contexts: contexts.map(({ text: contextText, title }) => ({
+          text: contextText,
+          title,
+        })),
+        text: prompt,
+      });
       if (sent !== false) {
         setText("");
         setAttachments([]);
+        setContexts([]);
       }
     } catch (error) {
       onToast(error instanceof Error ? error.message : String(error));
@@ -183,28 +319,62 @@ export function Composer({
     }
   }
 
-  const selectedModel =
-    models.find((model) => model.id === preferences.selectedModel) ??
-    models.find((model) => model.isDefault) ??
-    models[0];
-  const effortOptions = selectedModel?.supportedReasoningEfforts?.length
-    ? selectedModel.supportedReasoningEfforts
-    : [
-        { reasoningEffort: "low", description: "Fast" },
-        { reasoningEffort: "medium", description: "Balanced" },
-        { reasoningEffort: "high", description: "Deep reasoning" },
-      ];
-  const effectiveEffort = effortOptions.some(
-    (option) => option.reasoningEffort === preferences.selectedEffort,
-  )
-    ? preferences.selectedEffort
-    : (selectedModel?.defaultReasoningEffort ??
-      effortOptions[0]?.reasoningEffort ??
-      "medium");
+  function captureLongContext(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const pasted = event.clipboardData.getData("text/plain");
+    if (!isLongContext(pasted)) return;
+    event.preventDefault();
+    const contextText = pasted.trim();
+    setContexts((current) => [
+      ...current,
+      {
+        id: `context-${nextContextId.current++}`,
+        text: contextText,
+        title: contextTitle(contextText),
+      },
+    ]);
+  }
+
+  function revealContext(context: ComposerContextBlock & { id: string }) {
+    const revealedText = `${context.text}${text.trim() ? `\n\n${text}` : ""}`;
+    if (revealedText.length > MAX_PROMPT_CHARACTERS) {
+      onToast(
+        "The context is too large to reveal without truncating the draft.",
+      );
+      return;
+    }
+    setContexts((current) =>
+      current.filter((candidate) => candidate.id !== context.id),
+    );
+    setText(revealedText);
+    window.requestAnimationFrame(() => {
+      textarea.current?.focus();
+      textarea.current?.setSelectionRange(0, 0);
+      if (textarea.current) textarea.current.scrollTop = 0;
+    });
+  }
+
+  const contextCards = contexts.length ? (
+    <div aria-label="Pasted context" className="context-block-strip">
+      {contexts.map((context) => (
+        <ComposerContextCard
+          context={context}
+          key={context.id}
+          onRemove={() =>
+            setContexts((current) =>
+              current.filter((candidate) => candidate.id !== context.id),
+            )
+          }
+          onReveal={() => revealContext(context)}
+        />
+      ))}
+    </div>
+  ) : null;
+  const hasDraft = Boolean(text.trim() || contexts.length > 0);
 
   if (compact) {
     return (
       <div className={`composer composer-compact ${active ? "is-active" : ""}`}>
+        {contextCards}
         {attachments.length > 0 ? (
           <div className="attachment-strip" aria-label="Attached files">
             {attachments.map((path) => (
@@ -224,18 +394,30 @@ export function Composer({
             ))}
           </div>
         ) : null}
-        <div className="compact-composer-row">
+        <div
+          className={`compact-composer-row ${compactMultiline ? "multiline" : ""}`}
+          ref={compactRowRef}
+        >
           <button
-            aria-label="Attach files"
+            aria-label="Add agents, context, tools"
+            aria-haspopup="menu"
             className="compact-add-button"
-            onClick={() => void chooseAttachments()}
+            aria-expanded={toolsOpen}
+            onClick={() => setToolsOpen((value) => !value)}
             title="Attach files"
           >
             <Plus size={18} />
           </button>
+          {toolsOpen ? (
+            <ComposerToolsMenu
+              onClose={() => setToolsOpen(false)}
+              onFile={() => void chooseAttachments()}
+              onToast={onToast}
+            />
+          ) : null}
           <textarea
             ref={textarea}
-            aria-label={active ? "Send follow-up" : "Describe a task"}
+            aria-label="Send follow-up"
             disabled={disabled || submitting}
             maxLength={MAX_PROMPT_CHARACTERS}
             onChange={(event) => setText(event.target.value)}
@@ -249,70 +431,46 @@ export function Composer({
                 void submit();
               }
             }}
+            onPaste={captureLongContext}
             placeholder="Send follow-up"
             rows={1}
             value={text}
           />
-          <div className="compact-composer-controls">
-            <label className="compact-model-picker" title="Choose model">
-              <select
-                aria-label="Model"
-                onChange={(event) => {
-                  const nextModel = models.find(
-                    (model) => model.id === event.target.value,
-                  );
-                  const supportsCurrent =
-                    nextModel?.supportedReasoningEfforts.some(
-                      (option) =>
-                        option.reasoningEffort === preferences.selectedEffort,
-                    ) ?? true;
-                  void updatePreferences({
-                    selectedModel: event.target.value,
-                    ...(!supportsCurrent && nextModel
-                      ? { selectedEffort: nextModel.defaultReasoningEffort }
-                      : {}),
-                  });
-                }}
-                value={selectedModel?.id ?? ""}
-              >
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="compact-effort-picker" title="Reasoning effort">
-              <select
-                aria-label="Reasoning effort"
-                onChange={(event) =>
-                  void updatePreferences({
-                    selectedEffort: event.target.value,
-                  })
-                }
-                value={effectiveEffort}
-              >
-                {effortOptions.map((option) => (
-                  <option
-                    key={option.reasoningEffort}
-                    title={option.description}
-                    value={option.reasoningEffort}
-                  >
-                    {effortLabel(option.reasoningEffort)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <LockKeyhole aria-hidden="true" size={12} />
-            {active ? (
+          <div className="compact-composer-controls" ref={compactControlsRef}>
+            <ComposerModelControls
+              compact
+              disabled={active}
+              models={models}
+              preferences={preferences}
+              updatePreferences={updatePreferences}
+            />
+            {active && hasDraft ? (
+              <>
+                <button
+                  aria-label="Stop generation"
+                  className="compact-stop-button"
+                  onClick={onInterrupt}
+                >
+                  <Square fill="currentColor" size={10} />
+                </button>
+                <button
+                  aria-label="Queue prompt"
+                  className="compact-voice-button"
+                  disabled={disabled || submitting}
+                  onClick={() => void submit()}
+                >
+                  <ArrowUp size={18} strokeWidth={2.4} />
+                </button>
+              </>
+            ) : active ? (
               <button
-                aria-label="Stop task"
+                aria-label="Stop generation"
                 className="compact-voice-button stop"
                 onClick={onInterrupt}
               >
                 <Square fill="currentColor" size={11} />
               </button>
-            ) : text.trim() ? (
+            ) : hasDraft ? (
               <button
                 aria-label="Send prompt"
                 className="compact-voice-button"
@@ -343,6 +501,7 @@ export function Composer({
     <div
       className={`composer ${compact ? "composer-compact" : ""} ${active ? "is-active" : ""}`}
     >
+      {contextCards}
       {attachments.length > 0 ? (
         <div className="attachment-strip" aria-label="Attached files">
           {attachments.map((path) => (
@@ -364,7 +523,10 @@ export function Composer({
       ) : null}
       <textarea
         ref={textarea}
-        aria-label={active ? "Send follow-up" : "Describe a task"}
+        aria-label={
+          active ? "Send follow-up" : (placeholder ?? "Describe a task")
+        }
+        autoFocus={!compact}
         disabled={disabled || submitting}
         maxLength={MAX_PROMPT_CHARACTERS}
         onChange={(event) => setText(event.target.value)}
@@ -378,112 +540,84 @@ export function Composer({
             void submit();
           }
         }}
-        placeholder={active ? "Send follow-up" : "Plan, build, or ask anything"}
+        onPaste={captureLongContext}
+        placeholder={
+          placeholder ??
+          (active ? "Send follow-up" : "Plan, build, or ask anything")
+        }
         rows={1}
         value={text}
       />
       <div className="composer-toolbar">
         <div className="composer-tools">
           <button
-            aria-label="Attach files"
-            className="icon-button subtle"
-            onClick={() => void chooseAttachments()}
+            aria-label="Add agents, context, tools"
+            aria-haspopup="menu"
+            className="composer-add-button"
+            aria-expanded={toolsOpen}
+            onClick={() => setToolsOpen((value) => !value)}
             title="Attach files"
           >
-            <Paperclip size={16} />
+            <Plus size={16} />
           </button>
-          <button
-            aria-label="Add context"
-            className="icon-button subtle"
-            onClick={() => {
-              setText(
-                (current) =>
-                  `${current}${current && !current.endsWith(" ") ? " " : ""}@`,
-              );
-              textarea.current?.focus();
-            }}
-            title="Mention context"
-          >
-            <AtSign size={16} />
-          </button>
-          <label className="model-picker" title="Choose model">
-            <WandSparkles size={14} />
-            <select
-              aria-label="Model"
-              onChange={(event) => {
-                const nextModel = models.find(
-                  (model) => model.id === event.target.value,
-                );
-                const supportsCurrent =
-                  nextModel?.supportedReasoningEfforts.some(
-                    (option) =>
-                      option.reasoningEffort === preferences.selectedEffort,
-                  ) ?? true;
-                void updatePreferences({
-                  selectedModel: event.target.value,
-                  ...(!supportsCurrent && nextModel
-                    ? { selectedEffort: nextModel.defaultReasoningEffort }
-                    : {}),
-                });
-              }}
-              value={selectedModel?.id ?? ""}
-            >
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.displayName}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={12} />
-          </label>
-          <label className="effort-picker" title="Reasoning effort">
-            <select
-              aria-label="Reasoning effort"
-              onChange={(event) =>
-                void updatePreferences({
-                  selectedEffort: event.target.value,
-                })
-              }
-              value={effectiveEffort}
-            >
-              {effortOptions.map((option) => (
-                <option
-                  key={option.reasoningEffort}
-                  title={option.description}
-                  value={option.reasoningEffort}
-                >
-                  {effortLabel(option.reasoningEffort)}
-                </option>
-              ))}
-            </select>
-          </label>
+          {toolsOpen ? (
+            <ComposerToolsMenu
+              onClose={() => setToolsOpen(false)}
+              onFile={() => void chooseAttachments()}
+              onToast={onToast}
+            />
+          ) : null}
+          <ComposerModelControls
+            disabled={active}
+            models={models}
+            preferences={preferences}
+            updatePreferences={updatePreferences}
+          />
         </div>
         <div className="composer-actions">
-          <span className="composer-hint">↵ send · ⇧↵ newline</span>
-          <button
-            aria-label={listening ? "Stop voice input" : "Start voice input"}
-            className={`icon-button ${listening ? "listening" : "subtle"}`}
-            onClick={toggleDictation}
-            title="Voice input"
-          >
-            <Mic size={16} />
-          </button>
-          {active ? (
+          {active && hasDraft ? (
+            <>
+              <button
+                aria-label="Stop generation"
+                className="send-button-secondary"
+                onClick={onInterrupt}
+              >
+                <Square fill="currentColor" size={10} />
+              </button>
+              <button
+                aria-label="Queue prompt"
+                className="send-button"
+                disabled={disabled || submitting}
+                onClick={() => void submit()}
+              >
+                <ArrowUp size={17} strokeWidth={2.4} />
+              </button>
+            </>
+          ) : active ? (
             <button
-              aria-label="Stop task"
+              aria-label="Stop generation"
               className="send-button stop"
               onClick={onInterrupt}
             >
               <Square fill="currentColor" size={11} />
             </button>
-          ) : (
+          ) : hasDraft ? (
             <button
               aria-label="Send prompt"
               className="send-button"
-              disabled={!text.trim() || disabled || submitting}
+              disabled={disabled || submitting}
               onClick={() => void submit()}
             >
               <ArrowUp size={17} strokeWidth={2.4} />
+            </button>
+          ) : (
+            <button
+              aria-label={listening ? "Stop voice input" : "Start voice input"}
+              className={`composer-voice-button ${listening ? "listening" : ""}`}
+              onClick={toggleDictation}
+              title="Voice input"
+            >
+              <Mic size={15} />
             </button>
           )}
         </div>

@@ -111,4 +111,53 @@ describe("model context request policy", () => {
       }),
     ).toThrow("input text must be a bounded, non-empty string");
   });
+
+  it("accepts bounded UI context spans on UTF-8 boundaries", () => {
+    const context = "Résumé";
+    const text = `${context}\n\nReview it`;
+    expect(
+      validateModelContextRequest("turn/start", {
+        effort: "high",
+        input: [
+          {
+            text,
+            text_elements: [
+              {
+                byteRange: {
+                  end: Buffer.byteLength(context, "utf8"),
+                  start: 0,
+                },
+                placeholder: "Résumé",
+              },
+            ],
+            type: "text",
+          },
+        ],
+        model: null,
+        threadId: "thread-1",
+      }),
+    ).toEqual([]);
+  });
+
+  it("rejects overlapping or partial UTF-8 context spans", () => {
+    const request = (text: string, text_elements: JsonObject[]) => () =>
+      validateModelContextRequest("turn/start", {
+        effort: "high",
+        input: [{ text, text_elements, type: "text" }],
+        model: null,
+        threadId: "thread-1",
+      });
+
+    expect(
+      request("é context", [
+        { byteRange: { end: 1, start: 0 }, placeholder: "Context" },
+      ]),
+    ).toThrow(/UTF-8 spans/);
+    expect(
+      request("First second", [
+        { byteRange: { end: 5, start: 0 }, placeholder: "First" },
+        { byteRange: { end: 9, start: 4 }, placeholder: "Second" },
+      ]),
+    ).toThrow(/non-overlapping/);
+  });
 });

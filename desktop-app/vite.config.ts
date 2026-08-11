@@ -1,13 +1,19 @@
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   base: "./",
   plugins: [react()],
-  root: "src/renderer",
+  root: fileURLToPath(new URL("src/renderer", import.meta.url)),
   server: {
     port: 5178,
     strictPort: true,
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: "chrome134",
+    },
   },
   build: {
     outDir: "../../dist/renderer",

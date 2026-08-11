@@ -1,6 +1,5 @@
 import {
   Archive,
-  ArrowDown,
   Bot,
   Check,
   ChevronDown,
@@ -11,14 +10,12 @@ import {
   Code2,
   ExternalLink,
   FileCode2,
-  FolderOpen,
-  GitBranch,
   GitFork,
   Globe2,
   Laptop,
-  Link,
   LoaderCircle,
   MoreHorizontal,
+  PanelRight,
   Search,
   Sparkles,
   TerminalSquare,
@@ -32,11 +29,17 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { ThreadItem } from "../../shared/types";
+import { MenuItem, MenuSurface, useDismissibleLayer } from "../design-system";
 import type { CodexController, PlanStep } from "../state/useCodexController";
-import { Composer } from "./Composer";
+import { ConversationComposerDock } from "./ConversationComposerDock";
+import { ConversationTurnStatus } from "./ConversationTurnStatus";
+import { ThreadChanges } from "./ThreadChanges";
+import { UserMessage } from "./UserMessage";
 
 type ConversationViewProps = {
+  changesOpen: boolean;
   controller: CodexController;
+  onOpenChange(path: string): void;
   onOpenFile(path: string): void;
   onOpenTerminal(): void;
   onShowChanges(): void;
@@ -44,6 +47,9 @@ type ConversationViewProps = {
 };
 
 function localPathFromHref(href: string, cwd: string | null): string | null {
+  if (/^[A-Za-z]:[\\/]/.test(href)) {
+    return decodeURIComponent(href.split(/[?#]/, 1)[0] ?? href);
+  }
   try {
     const url = new URL(href);
     if (url.protocol !== "file:") return null;
@@ -58,86 +64,119 @@ function localPathFromHref(href: string, cwd: string | null): string | null {
   }
 }
 
-function UserMessage({
-  item,
-  onOpenFile,
-}: {
-  item: Extract<ThreadItem, { type: "userMessage" }>;
-  onOpenFile(path: string): void;
-}) {
-  const text = item.content
-    .filter((entry) => entry.type === "text")
-    .map((entry) => (entry.type === "text" ? entry.text : ""))
-    .join("\n");
-  const attachments = item.content.filter((entry) => entry.type !== "text");
-  return (
-    <div className="user-message">
-      {text ? <div>{text}</div> : null}
-      {attachments.length ? (
-        <div className="message-attachments">
-          {attachments.map((entry, index) => {
-            const path =
-              entry.type === "localImage" ||
-              entry.type === "localAudio" ||
-              entry.type === "skill" ||
-              entry.type === "mention"
-                ? entry.path
-                : null;
-            const label =
-              entry.type === "skill" || entry.type === "mention"
-                ? entry.name
-                : (path?.split(/[\\/]/).pop() ?? entry.type);
-            return path ? (
-              <button
-                key={`${entry.type}-${path}-${index}`}
-                onClick={() => onOpenFile(path)}
-              >
-                <FileCode2 size={12} /> {label}
-              </button>
-            ) : (
-              <span key={`${entry.type}-${index}`}>
-                <Link size={12} /> {label}
-              </span>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
+function localPathFromCode(value: string, cwd: string | null): string | null {
+  const reference = value.trim();
+  if (!reference || /\s/.test(reference)) return null;
+  const path = reference
+    .replace(/#L\d+(?:C\d+)?$/i, "")
+    .replace(/:\d+(?::\d+)?$/, "");
+  const absolute = /^(?:[A-Za-z]:[\\/]|[\\/]{2}|\/)/.test(path);
+  if (!path || (!absolute && /^[a-z][a-z0-9+.-]*:/i.test(path))) return null;
+  const fileName = path.split(/[/\\]/).pop() ?? "";
+  const looksLikeFile =
+    /^[^/\\]+\.[a-z0-9][a-z0-9._-]*$/i.test(fileName) ||
+    /^(?:build|dockerfile|justfile|license|makefile|readme|workspace)$/i.test(
+      fileName,
+    );
+  if (!looksLikeFile) return null;
+  return absolute || cwd ? path : null;
 }
 
-function durationLabel(durationMs: number | null): string {
-  if (!durationMs) return "Worked";
-  if (durationMs < 1_000) return `Worked for ${durationMs}ms`;
-  if (durationMs < 60_000)
-    return `Worked for ${Math.round(durationMs / 1_000)}s`;
-  const minutes = Math.floor(durationMs / 60_000);
-  const seconds = Math.round((durationMs % 60_000) / 1_000);
-  return `Worked for ${minutes}m ${seconds}s`;
+function reasoningText(
+  item: Extract<ThreadItem, { type: "reasoning" }>,
+): string {
+  const seen = new Set<string>();
+  return [...item.summary, ...item.content]
+    .flatMap((entry) => entry.split(/\n{2,}/))
+    .map((entry) => entry.trim())
+    .filter((entry) => {
+      if (!entry) return false;
+      const normalized = entry.replace(/\s+/g, " ");
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    })
+    .join("\n\n");
 }
 
-function ToolItem({
+export function ToolItem({
+  cwd,
   item,
+  onOpenChange,
   onOpenFile,
 }: {
+  cwd: string | null;
   item: ThreadItem;
+  onOpenChange(path: string): void;
   onOpenFile(path: string): void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(item.type === "reasoning");
   if (item.type === "reasoning") {
-    const text = [...item.summary, ...item.content]
-      .filter(Boolean)
-      .join("\n\n");
+    const text = reasoningText(item);
     return (
       <div className="activity-item reasoning-item">
         <button
+          aria-expanded={expanded}
           className="activity-summary"
           onClick={() => setExpanded((value) => !value)}
         >
           <span>Thought briefly</span>
+          <ChevronDown className={expanded ? "expanded" : ""} size={13} />
         </button>
         {expanded ? (
-          <pre className="activity-detail reasoning-detail">{text}</pre>
+          <div className="activity-detail reasoning-detail">
+            <ReactMarkdown
+              components={{
+                a: ({ href, children }) => {
+                  const localPath = href ? localPathFromHref(href, cwd) : null;
+                  return (
+                    <a
+                      href={href}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (localPath) {
+                          onOpenFile(localPath);
+                        } else if (href && !href.startsWith("#")) {
+                          void window.codexDesktop
+                            .openExternal(href)
+                            .catch(() => undefined);
+                        }
+                      }}
+                    >
+                      {localPath ? (
+                        <FileCode2 size={11} />
+                      ) : (
+                        <ExternalLink size={11} />
+                      )}
+                      {children}
+                    </a>
+                  );
+                },
+                code: ({ children, className }) => {
+                  const value = String(children).replace(/\n$/, "");
+                  const localPath = className
+                    ? null
+                    : localPathFromCode(value, cwd);
+                  return localPath ? (
+                    <button
+                      className="reasoning-file-link"
+                      onClick={() => onOpenFile(localPath)}
+                      title={`Open ${localPath}`}
+                      type="button"
+                    >
+                      <FileCode2 size={11} />
+                      <code>{children}</code>
+                    </button>
+                  ) : (
+                    <code className={className}>{children}</code>
+                  );
+                },
+              }}
+              remarkPlugins={[remarkGfm]}
+            >
+              {text}
+            </ReactMarkdown>
+          </div>
         ) : null}
       </div>
     );
@@ -151,6 +190,7 @@ function ToolItem({
     return (
       <div className="activity-item command-item">
         <button
+          aria-expanded={expanded}
           className={`activity-summary ${aggregate ? "aggregate-summary" : ""}`}
           onClick={() => setExpanded((value) => !value)}
         >
@@ -181,9 +221,12 @@ function ToolItem({
               <code>{item.command}</code>
             </>
           )}
+          <ChevronDown className={expanded ? "expanded" : ""} size={13} />
         </button>
         {expanded ? (
-          <div className="activity-detail terminal-output">
+          <div
+            className={`activity-detail terminal-output ${aggregate ? "aggregate-detail" : ""}`}
+          >
             <div className="terminal-output-header">
               <span>{item.cwd}</span>
               {item.durationMs ? (
@@ -218,6 +261,7 @@ function ToolItem({
     return (
       <div className="activity-item file-change-activity">
         <button
+          aria-expanded={expanded}
           className="activity-summary file-change-summary"
           onClick={() => setExpanded((value) => !value)}
         >
@@ -235,7 +279,7 @@ function ToolItem({
               <button
                 className="changed-file-row"
                 key={change.path}
-                onClick={() => onOpenFile(change.path)}
+                onClick={() => onOpenChange(change.path)}
               >
                 <FileCode2 size={14} />
                 <span>{change.path}</span>
@@ -515,7 +559,9 @@ function MessageActions({
 }
 
 export function ConversationView({
+  changesOpen,
   controller,
+  onOpenChange,
   onOpenFile,
   onOpenTerminal,
   onShowChanges,
@@ -523,10 +569,14 @@ export function ConversationView({
 }: ConversationViewProps) {
   const scroll = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
-  const [collapsedTurns, setCollapsedTurns] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const menuLayer = useRef<HTMLDivElement>(null);
+  const [atBottom, setAtBottom] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  useDismissibleLayer({
+    active: menuOpen,
+    layerRef: menuLayer,
+    onDismiss: () => setMenuOpen(false),
+  });
   const referenceCapture =
     new URLSearchParams(window.location.search).get("reference") === "cursor";
   const deviceLabel =
@@ -541,12 +591,14 @@ export function ConversationView({
       scroll.current?.scrollTo({ top: 0 });
       return;
     }
-    if (pinned.current) {
-      scroll.current?.scrollTo({
-        top: scroll.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
+    if (!pinned.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      const node = scroll.current;
+      if (!node) return;
+      node.scrollTop = node.scrollHeight;
+      setAtBottom(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [controller.items, controller.activeTurn?.id, referenceCapture]);
 
   return (
@@ -565,21 +617,107 @@ export function ConversationView({
           <span>{controller.activeTitle}</span>
           <Laptop size={12} />
         </button>
-        <div className="header-actions">
+        <div className="header-actions" ref={menuLayer}>
           <button className="header-button" onClick={onToggleWorkspace}>
             IDE <ExternalLink size={12} />
           </button>
           <button
             aria-expanded={menuOpen}
-            aria-label="Task actions"
+            aria-haspopup="menu"
+            aria-label="Chat actions"
             className="icon-button subtle"
             onClick={() => setMenuOpen((value) => !value)}
           >
             <MoreHorizontal size={16} />
           </button>
+          <button
+            aria-label="Show Apps"
+            className="icon-button subtle"
+            onClick={onToggleWorkspace}
+          >
+            <PanelRight size={15} />
+          </button>
           {menuOpen && controller.activeThread ? (
-            <div className="task-actions-menu">
-              <button
+            <MenuSurface className="task-actions-menu" role="menu">
+              <MenuItem
+                onClick={() => {
+                  controller.addToast(
+                    "Split down is available in the IDE workspace.",
+                  );
+                  setMenuOpen(false);
+                }}
+              >
+                <span>Split Down</span>
+                <kbd>⇧⌘D</kbd>
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  controller.addToast(
+                    "Split right is available in the IDE workspace.",
+                  );
+                  setMenuOpen(false);
+                }}
+              >
+                <span>Split Right</span>
+                <kbd>⌘D</kbd>
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  controller.addToast(
+                    "Task pinning is not persisted by this app server yet.",
+                  );
+                  setMenuOpen(false);
+                }}
+              >
+                Pin
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  const thread = controller.activeThread;
+                  if (thread) {
+                    const name = window.prompt(
+                      "Rename task",
+                      controller.activeTitle,
+                    );
+                    if (name) void controller.renameThread(thread, name);
+                  }
+                  setMenuOpen(false);
+                }}
+              >
+                Rename
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  controller.addToast(
+                    "Unread state is managed by the app server.",
+                  );
+                  setMenuOpen(false);
+                }}
+              >
+                Mark as Unread
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  controller.addToast(
+                    "Forking keeps the current task context in a new task.",
+                  );
+                  setMenuOpen(false);
+                  controller.newTask();
+                }}
+              >
+                Fork
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  controller.addToast(
+                    "Move to is available when multiple workspaces are connected.",
+                  );
+                  setMenuOpen(false);
+                }}
+              >
+                Move to
+              </MenuItem>
+              <MenuItem
                 onClick={() => {
                   void navigator.clipboard
                     .writeText(
@@ -597,39 +735,29 @@ export function ConversationView({
                   setMenuOpen(false);
                 }}
               >
-                <Link size={13} /> Copy task link
-              </button>
-              <button
+                Copy
+              </MenuItem>
+              <MenuItem
                 onClick={() => {
-                  const cwd = controller.activeThread?.cwd;
-                  if (cwd) {
-                    void window.codexDesktop
-                      .revealPath(cwd)
-                      .catch((error: unknown) =>
-                        controller.addToast(
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                          "danger",
-                        ),
-                      );
-                  }
+                  controller.addToast(
+                    "Export is not available in this local app server yet.",
+                  );
                   setMenuOpen(false);
                 }}
               >
-                <FolderOpen size={13} /> Reveal repository
-              </button>
-              <button
-                className="danger"
+                Export
+              </MenuItem>
+              <MenuItem
+                destructive
                 onClick={() => {
                   const thread = controller.activeThread;
                   if (thread) void controller.archiveThread(thread);
                   setMenuOpen(false);
                 }}
               >
-                <Archive size={13} /> Archive task
-              </button>
-            </div>
+                <Archive size={13} /> Archive
+              </MenuItem>
+            </MenuSurface>
           ) : null}
         </div>
       </header>
@@ -637,8 +765,10 @@ export function ConversationView({
         className="conversation-scroll"
         onScroll={(event) => {
           const node = event.currentTarget;
-          pinned.current =
-            node.scrollHeight - node.scrollTop - node.clientHeight < 100;
+          const nextAtBottom =
+            node.scrollHeight - node.scrollTop - node.clientHeight < 64;
+          pinned.current = nextAtBottom;
+          setAtBottom(nextAtBottom);
         }}
         ref={scroll}
       >
@@ -657,124 +787,121 @@ export function ConversationView({
               Load older activity
             </button>
           ) : null}
-          {controller.activeThread?.turns.map((turn) => (
-            <section
-              className={`turn ${collapsedTurns.has(turn.id) ? "collapsed" : ""}`}
-              key={turn.id}
-            >
-              {turn.items.map((item) => {
-                if (item.type === "userMessage") {
-                  return (
-                    <UserMessage
-                      item={item}
-                      key={item.id}
-                      onOpenFile={onOpenFile}
-                    />
-                  );
-                }
-                if (item.type === "agentMessage") {
-                  return (
-                    <article className="agent-message markdown" key={item.id}>
-                      <ReactMarkdown
-                        components={{
-                          a: ({ href, children }) => (
-                            <a
-                              href={href}
-                              onClick={(event) => {
-                                event.preventDefault();
-                                if (href) {
-                                  const localPath = localPathFromHref(
-                                    href,
-                                    controller.activeThread?.cwd ?? null,
-                                  );
-                                  if (localPath) {
-                                    onOpenFile(localPath);
-                                  } else if (!href.startsWith("#")) {
-                                    void window.codexDesktop
-                                      .openExternal(href)
-                                      .catch((error: unknown) =>
-                                        controller.addToast(
-                                          error instanceof Error
-                                            ? error.message
-                                            : String(error),
-                                          "danger",
-                                        ),
-                                      );
-                                  }
-                                }
-                              }}
-                            >
-                              {children}
-                              <ExternalLink size={11} />
-                            </a>
-                          ),
-                          code: ({ children, className }) => (
-                            <code className={className}>{children}</code>
-                          ),
-                        }}
-                        remarkPlugins={[remarkGfm]}
+          {controller.activeThread?.turns.map((turn) => {
+            const streamingMessageId =
+              turn.status === "inProgress"
+                ? [...turn.items]
+                    .reverse()
+                    .find((item) => item.type === "agentMessage")?.id
+                : null;
+            return (
+              <section
+                aria-busy={turn.status === "inProgress"}
+                className={`turn ${turn.status === "inProgress" ? "is-streaming" : ""}`}
+                key={turn.id}
+              >
+                {turn.items.map((item) => {
+                  if (item.type === "userMessage") {
+                    return (
+                      <UserMessage
+                        item={item}
+                        key={item.id}
+                        onOpenFile={onOpenFile}
+                      />
+                    );
+                  }
+                  if (item.type === "agentMessage") {
+                    const commentary = item.phase === "commentary";
+                    return (
+                      <article
+                        className={`agent-message markdown ${commentary ? "turn-trace agent-commentary" : "turn-answer"} ${item.id === streamingMessageId ? "is-streaming" : ""}`}
+                        key={item.id}
                       >
-                        {item.text}
-                      </ReactMarkdown>
-                    </article>
-                  );
-                }
-                if (item.type === "plan") {
+                        <ReactMarkdown
+                          components={{
+                            a: ({ href, children }) => (
+                              <a
+                                href={href}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  if (href) {
+                                    const localPath = localPathFromHref(
+                                      href,
+                                      controller.activeThread?.cwd ?? null,
+                                    );
+                                    if (localPath) {
+                                      onOpenFile(localPath);
+                                    } else if (!href.startsWith("#")) {
+                                      void window.codexDesktop
+                                        .openExternal(href)
+                                        .catch((error: unknown) =>
+                                          controller.addToast(
+                                            error instanceof Error
+                                              ? error.message
+                                              : String(error),
+                                            "danger",
+                                          ),
+                                        );
+                                    }
+                                  }
+                                }}
+                              >
+                                {children}
+                                <ExternalLink size={11} />
+                              </a>
+                            ),
+                            code: ({ children, className }) => (
+                              <code className={className}>{children}</code>
+                            ),
+                          }}
+                          remarkPlugins={[remarkGfm]}
+                        >
+                          {item.text}
+                        </ReactMarkdown>
+                      </article>
+                    );
+                  }
+                  if (item.type === "plan") {
+                    return (
+                      <div
+                        className="agent-message markdown turn-trace"
+                        key={item.id}
+                      >
+                        <ReactMarkdown>{item.text}</ReactMarkdown>
+                      </div>
+                    );
+                  }
                   return (
-                    <div className="agent-message markdown" key={item.id}>
-                      <ReactMarkdown>{item.text}</ReactMarkdown>
+                    <div className="turn-trace turn-trace-item" key={item.id}>
+                      <ToolItem
+                        cwd={controller.activeThread?.cwd ?? null}
+                        item={item}
+                        onOpenChange={onOpenChange}
+                        onOpenFile={onOpenFile}
+                      />
                     </div>
                   );
-                }
-                return (
-                  <ToolItem item={item} key={item.id} onOpenFile={onOpenFile} />
-                );
-              })}
-              {(() => {
-                const response = [...turn.items]
-                  .reverse()
-                  .find(
-                    (item) =>
-                      item.type === "agentMessage" &&
-                      item.phase !== "commentary",
-                  );
-                return response?.type === "agentMessage" ? (
-                  <MessageActions
-                    controller={controller}
-                    key={`${turn.id}-actions`}
-                    text={response.text}
-                  />
-                ) : null;
-              })()}
-              <div className="turn-meta">
-                {turn.status === "inProgress" ? (
-                  <span>
-                    <LoaderCircle className="spin" size={13} /> Working
-                  </span>
-                ) : turn.items.some((item) => item.type === "reasoning") ? (
-                  <button
-                    aria-label={`${collapsedTurns.has(turn.id) ? "Expand" : "Collapse"} turn`}
-                    onClick={() =>
-                      setCollapsedTurns((current) => {
-                        const next = new Set(current);
-                        if (next.has(turn.id)) next.delete(turn.id);
-                        else next.add(turn.id);
-                        return next;
-                      })
-                    }
-                  >
-                    {durationLabel(turn.durationMs)}
-                    <ChevronDown
-                      className={collapsedTurns.has(turn.id) ? "collapsed" : ""}
-                      size={13}
+                })}
+                {(() => {
+                  const response = [...turn.items]
+                    .reverse()
+                    .find(
+                      (item) =>
+                        item.type === "agentMessage" &&
+                        item.phase !== "commentary",
+                    );
+                  return response?.type === "agentMessage" ? (
+                    <MessageActions
+                      controller={controller}
+                      key={`${turn.id}-actions`}
+                      text={response.text}
                     />
-                  </button>
-                ) : (
-                  <span>{durationLabel(turn.durationMs)}</span>
-                )}
-              </div>
-            </section>
-          ))}
+                  ) : null;
+                })()}
+                <ConversationTurnStatus turn={turn} />
+              </section>
+            );
+          })}
           <Plan steps={controller.plan} />
           {controller.loadingThread ? (
             <div className="conversation-loading">
@@ -783,61 +910,29 @@ export function ConversationView({
               <span />
             </div>
           ) : null}
+          <ThreadChanges
+            items={controller.items}
+            onOpenChange={onOpenChange}
+            onReview={onShowChanges}
+          />
         </div>
       </div>
-      <div className="conversation-composer-wrap">
-        <div className="change-actions">
-          <button onClick={onShowChanges}>Changes</button>
-          <button onClick={onOpenTerminal}>
-            Commit &amp; Push <ChevronDown size={12} />
-          </button>
-          <button onClick={onToggleWorkspace}>Design Mode</button>
-          <button
-            aria-label="Scroll to latest message"
-            className="scroll-to-latest"
-            onClick={() => {
-              pinned.current = true;
-              scroll.current?.scrollTo({
-                behavior: "smooth",
-                top: scroll.current.scrollHeight,
-              });
-            }}
-          >
-            <ArrowDown size={14} />
-          </button>
-        </div>
-        <Composer
-          active={Boolean(controller.activeTurn)}
-          compact
-          disabled={controller.runtime.phase !== "ready"}
-          models={controller.models}
-          onInterrupt={controller.interrupt}
-          onSubmit={controller.submitPrompt}
-          onToast={(message) => controller.addToast(message)}
-          preferences={controller.preferences}
-          updatePreferences={controller.updatePreferences}
-        />
-        <div className="conversation-statusbar">
-          <button>
-            <GitBranch size={12} />
-            {controller.activeThread?.gitInfo?.branch ?? "Current branch"}
-            <ChevronDown size={11} />
-          </button>
-          <button>
-            <Laptop size={12} /> {deviceLabel} <ChevronDown size={11} />
-          </button>
-          <span
-            aria-label={`Context ${controller.tokenPercent}%`}
-            className="context-ring"
-            style={{
-              background: `conic-gradient(var(--addition) ${controller.tokenPercent}%, var(--border-strong) 0)`,
-            }}
-            title={`Context ${controller.tokenPercent}%`}
-          >
-            <i />
-          </span>
-        </div>
-      </div>
+      <ConversationComposerDock
+        atBottom={atBottom}
+        changesOpen={changesOpen}
+        controller={controller}
+        deviceLabel={deviceLabel}
+        onOpenTerminal={onOpenTerminal}
+        onScrollToLatest={() => {
+          pinned.current = true;
+          setAtBottom(true);
+          scroll.current?.scrollTo({
+            behavior: "smooth",
+            top: scroll.current.scrollHeight,
+          });
+        }}
+        onShowChanges={onShowChanges}
+      />
     </main>
   );
 }

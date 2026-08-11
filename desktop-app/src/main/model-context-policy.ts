@@ -4,6 +4,8 @@ const MAX_IDENTIFIER_BYTES = 1_024;
 const MAX_INPUT_ITEMS = 21;
 const MAX_INPUT_JSON_BYTES = 64 * 1_024;
 const MAX_MODEL_OPTION_BYTES = 512;
+const MAX_TEXT_ELEMENTS = 20;
+const MAX_TEXT_ELEMENT_PLACEHOLDER_BYTES = 1_024;
 export const MAX_USER_TEXT_BYTES = 32 * 1_024;
 
 export type LocalInputReference = {
@@ -43,6 +45,62 @@ function nullableModel(value: JsonValue | undefined): void {
   boundedString(value, "model", MAX_MODEL_OPTION_BYTES);
 }
 
+function isUtf8Boundary(text: string, offset: number): boolean {
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(
+      Buffer.from(text, "utf8").subarray(0, offset),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function assertTextElements(text: string, value: JsonValue | undefined): void {
+  if (!Array.isArray(value) || value.length > MAX_TEXT_ELEMENTS) {
+    throw new TypeError(
+      `text_elements must contain at most ${MAX_TEXT_ELEMENTS} items`,
+    );
+  }
+  const textBytes = Buffer.byteLength(text, "utf8");
+  let previousEnd = 0;
+  for (const element of value) {
+    if (!isPlainObject(element)) {
+      throw new TypeError("text_elements entries must be objects");
+    }
+    assertOnlyKeys(element, new Set(["byteRange", "placeholder"]));
+    if (!isPlainObject(element.byteRange)) {
+      throw new TypeError("text element byteRange must be an object");
+    }
+    assertOnlyKeys(element.byteRange, new Set(["end", "start"]));
+    const { end, start } = element.byteRange;
+    if (
+      typeof start !== "number" ||
+      typeof end !== "number" ||
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start < previousEnd ||
+      start < 0 ||
+      end <= start ||
+      end > textBytes ||
+      !isUtf8Boundary(text, start) ||
+      !isUtf8Boundary(text, end)
+    ) {
+      throw new RangeError(
+        "text element byte ranges must be ordered, non-overlapping UTF-8 spans",
+      );
+    }
+    if (element.placeholder !== null) {
+      boundedString(
+        element.placeholder,
+        "text element placeholder",
+        MAX_TEXT_ELEMENT_PLACEHOLDER_BYTES,
+      );
+    }
+    previousEnd = end;
+  }
+}
+
 function assertInput(input: JsonValue | undefined): LocalInputReference[] {
   if (
     !Array.isArray(input) ||
@@ -69,13 +127,8 @@ function assertInput(input: JsonValue | undefined): LocalInputReference[] {
         throw new Error("input must begin with exactly one text item");
       }
       assertOnlyKeys(entry, new Set(["text", "text_elements", "type"]));
-      boundedString(entry.text, "input text", MAX_USER_TEXT_BYTES);
-      if (
-        !Array.isArray(entry.text_elements) ||
-        entry.text_elements.length > 0
-      ) {
-        throw new Error("Renderer text elements must be empty");
-      }
+      const text = boundedString(entry.text, "input text", MAX_USER_TEXT_BYTES);
+      assertTextElements(text, entry.text_elements);
       continue;
     }
 

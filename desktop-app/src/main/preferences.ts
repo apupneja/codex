@@ -14,6 +14,7 @@ const DEFAULTS: DesktopPreferences = {
   selectedModel: null,
   sidebarOpen: true,
   theme: "dark",
+  uiFontSize: 13,
 };
 
 export class PreferencesStore {
@@ -115,8 +116,15 @@ export function sanitizePreferences(
       typeof value.sidebarOpen === "boolean"
         ? value.sidebarOpen
         : DEFAULTS.sidebarOpen,
-    theme: ["dark", "light", "system"].includes(value.theme)
+    theme: [
+      "dark",
+      "dark-high-contrast",
+      "light",
+      "light-colorblind",
+      "system",
+    ].includes(value.theme)
       ? value.theme
       : DEFAULTS.theme,
+    uiFontSize: Math.max(10, Math.min(20, Number(value.uiFontSize) || 13)),
   };
 }

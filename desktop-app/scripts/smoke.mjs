@@ -16,7 +16,15 @@ import { fileURLToPath } from "node:url";
 import electron from "electron";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const output = join(appRoot, "artifacts", "smoke.png");
+const requestedTheme = process.env.CODEX_DESKTOP_SMOKE_THEME ?? "dark";
+if (requestedTheme !== "dark" && requestedTheme !== "light") {
+  throw new Error(`Unsupported smoke theme: ${requestedTheme}`);
+}
+const output = join(
+  appRoot,
+  "artifacts",
+  requestedTheme === "dark" ? "smoke.png" : `smoke-${requestedTheme}.png`,
+);
 const mock = join(appRoot, "scripts", "mock-app-server.mjs");
 await mkdir(dirname(output), { recursive: true });
 await unlink(output).catch(() => undefined);
@@ -29,6 +37,11 @@ await Promise.all([
   mkdir(join(temporaryRoot, "signal-arena")),
   mkdir(join(temporaryRoot, "intusent-site")),
 ]);
+await writeFile(
+  join(temporaryRoot, "signal-arena", "capture-ui.mjs"),
+  'export const capture = "ready";\n',
+  "utf8",
+);
 await writeFile(
   join(userData, "desktop-preferences.json"),
   JSON.stringify({
@@ -44,7 +57,7 @@ await writeFile(
     selectedEffort: "low",
     selectedModel: "composer-2.5",
     sidebarOpen: true,
-    theme: "dark",
+    theme: requestedTheme,
   }),
   { encoding: "utf8", mode: 0o600 },
 );
