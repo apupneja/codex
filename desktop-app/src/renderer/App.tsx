@@ -1,4 +1,10 @@
-import { AlertTriangle, PanelLeftOpen, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  PanelLeft,
+  Plus,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import {
   lazy,
   Suspense,
@@ -14,8 +20,9 @@ import { ApprovalDialog } from "./components/ApprovalDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { ConversationView } from "./components/ConversationView";
 import { NewTaskView } from "./components/NewTaskView";
-import { Sidebar } from "./components/Sidebar";
+import { Sidebar, type SidebarGrouping } from "./components/Sidebar";
 import { Toasts } from "./components/Toasts";
+import type { WorkspaceTab } from "./components/WorkspacePanel";
 import {
   AutomationsView,
   CustomizeView,
@@ -51,10 +58,42 @@ export default function App() {
     controller;
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [previewReady, setPreviewReady] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+  const [narrowSidebarOpen, setNarrowSidebarOpen] = useState(false);
+  const [newTaskWorkspaceOpen, setNewTaskWorkspaceOpen] = useState(false);
+  const [viewBeforeSettings, setViewBeforeSettings] = useState<
+    "automations" | "customize" | "new" | "thread"
+  >("new");
+  const [sidebarGrouping, setSidebarGroupingState] = useState<SidebarGrouping>(
+    () =>
+      (window.localStorage.getItem(
+        "cursor-sidebar-grouping",
+      ) as SidebarGrouping | null) ?? "repository",
+  );
   const [requestedFile, setRequestedFile] = useState<string | null>(null);
-  const [requestedWorkspaceTab, setRequestedWorkspaceTab] = useState<
-    "changes" | "terminal" | null
-  >(null);
+  const [requestedChangePath, setRequestedChangePath] = useState<string | null>(
+    null,
+  );
+  const [requestedWorkspaceTab, setRequestedWorkspaceTab] =
+    useState<WorkspaceTab | null>(null);
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<WorkspaceTab>(
+    () => {
+      if (new URLSearchParams(window.location.search).has("preview")) {
+        return "browser";
+      }
+      const stored = window.localStorage.getItem("codex-workspace-dock-tab");
+      return stored === "browser" ||
+        stored === "canvas" ||
+        stored === "changes" ||
+        stored === "editor" ||
+        stored === "files" ||
+        stored === "terminal"
+        ? stored
+        : stored === "preview"
+          ? "canvas"
+          : "editor";
+    },
+  );
   const approvalRequest = controller.serverRequests[0];
   const approvalParams = approvalRequest?.params as unknown as
     | JsonObject
@@ -80,8 +119,10 @@ export default function App() {
     useState<JsonValue>();
   const [approvalChangesLoading, setApprovalChangesLoading] = useState(false);
   const workspaceVisible =
-    controller.preferences.rightPanelOpen &&
-    (controller.view === "new" || controller.view === "thread");
+    (controller.preferences.rightPanelOpen && controller.view === "thread") ||
+    (controller.view === "new" && newTaskWorkspaceOpen);
+  const narrowLayout =
+    viewportWidth < (workspaceVisible ? 260 + 424 + 520 : 260 + 424);
   const [workspaceMounted, setWorkspaceMounted] = useState(workspaceVisible);
   const smokePreviewRequested = useMemo(
     () => new URLSearchParams(window.location.search).has("preview"),
@@ -99,47 +140,164 @@ export default function App() {
     }
   }, [workspaceVisible]);
 
+  useEffect(() => {
+    const updateLayout = () => {
+      setViewportWidth(window.innerWidth);
+    };
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    return () => window.removeEventListener("resize", updateLayout);
+  }, []);
+
+  useEffect(() => {
+    if (!narrowLayout) setNarrowSidebarOpen(false);
+  }, [narrowLayout]);
+
+  useEffect(() => setNarrowSidebarOpen(false), [controller.view]);
+
+  useEffect(() => {
+    if (controller.view !== "settings") {
+      setViewBeforeSettings(controller.view);
+    }
+  }, [controller.view]);
+
+  const sidebarMode = narrowLayout
+    ? narrowSidebarOpen
+      ? "overlay"
+      : "hidden"
+    : preferences.sidebarOpen
+      ? "inline"
+      : "hidden";
+
   const toggleSidebar = useCallback(() => {
+    if (narrowLayout) {
+      setNarrowSidebarOpen((open) => !open);
+      return;
+    }
     void updatePreferences({ sidebarOpen: !preferences.sidebarOpen });
-  }, [preferences.sidebarOpen, updatePreferences]);
+  }, [narrowLayout, preferences.sidebarOpen, updatePreferences]);
+  const setNativeWorkspaceVisibility = useCallback(
+    (visibility: "closed" | "open") =>
+      window.codexDesktop.setWorkspacePanelVisibility({
+        sidebarMode,
+        visibility,
+      }),
+    [sidebarMode],
+  );
+  const openWorkspace = useCallback(() => {
+    void setNativeWorkspaceVisibility("open");
+    if (controller.view === "new") {
+      setNewTaskWorkspaceOpen(true);
+    } else if (!preferences.rightPanelOpen) {
+      void updatePreferences({ rightPanelOpen: true });
+    }
+  }, [
+    controller.view,
+    preferences.rightPanelOpen,
+    setNativeWorkspaceVisibility,
+    updatePreferences,
+  ]);
   const toggleWorkspace = useCallback(() => {
-    void updatePreferences({ rightPanelOpen: !preferences.rightPanelOpen });
-  }, [preferences.rightPanelOpen, updatePreferences]);
+    if (controller.view === "new") {
+      if (newTaskWorkspaceOpen) {
+        setNewTaskWorkspaceOpen(false);
+        void setNativeWorkspaceVisibility("closed");
+      } else {
+        openWorkspace();
+      }
+      return;
+    }
+    if (preferences.rightPanelOpen) {
+      void updatePreferences({ rightPanelOpen: false });
+      void setNativeWorkspaceVisibility("closed");
+    } else {
+      openWorkspace();
+    }
+  }, [
+    controller.view,
+    newTaskWorkspaceOpen,
+    openWorkspace,
+    preferences.rightPanelOpen,
+    setNativeWorkspaceVisibility,
+    updatePreferences,
+  ]);
   const openFile = useCallback(
     (path: string) => {
       setRequestedFile(path);
-      if (!preferences.rightPanelOpen) {
-        void updatePreferences({ rightPanelOpen: true });
-      }
+      openWorkspace();
     },
-    [preferences.rightPanelOpen, updatePreferences],
+    [openWorkspace],
   );
   const showChanges = useCallback(() => {
+    setRequestedChangePath(null);
     setRequestedWorkspaceTab("changes");
-    if (!preferences.rightPanelOpen) {
-      void updatePreferences({ rightPanelOpen: true });
-    }
-  }, [preferences.rightPanelOpen, updatePreferences]);
+    openWorkspace();
+  }, [openWorkspace]);
+  const openChangedFile = useCallback(
+    (path: string) => {
+      setRequestedChangePath(path);
+      setRequestedWorkspaceTab("changes");
+      openWorkspace();
+    },
+    [openWorkspace],
+  );
   const openTerminal = useCallback(() => {
     setRequestedWorkspaceTab("terminal");
-    if (!preferences.rightPanelOpen) {
-      void updatePreferences({ rightPanelOpen: true });
-    }
-  }, [preferences.rightPanelOpen, updatePreferences]);
+    openWorkspace();
+  }, [openWorkspace]);
+  const openWorkspaceTab = useCallback(
+    (tab: WorkspaceTab) => {
+      setRequestedWorkspaceTab(tab);
+      openWorkspace();
+    },
+    [openWorkspace],
+  );
+  const setSidebarGrouping = useCallback((grouping: SidebarGrouping) => {
+    window.localStorage.setItem("cursor-sidebar-grouping", grouping);
+    setSidebarGroupingState(grouping);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const applyTheme = () => {
       const isDark =
         preferences.theme === "dark" ||
+        preferences.theme === "dark-high-contrast" ||
         (preferences.theme === "system" && media.matches);
       document.documentElement.dataset.theme = isDark ? "dark" : "light";
+      document.documentElement.dataset.themeVariant = preferences.theme;
       document.documentElement.style.colorScheme = isDark ? "dark" : "light";
     };
     applyTheme();
     media.addEventListener("change", applyTheme);
     return () => media.removeEventListener("change", applyTheme);
   }, [preferences.theme]);
+
+  useEffect(() => {
+    const uiFontSize = Number.isFinite(preferences.uiFontSize)
+      ? preferences.uiFontSize
+      : 13;
+    const scale = uiFontSize / 13;
+    const sizes = {
+      "--font-size-3xs": 10,
+      "--font-size-2xs": 10,
+      "--font-size-xs": 10,
+      "--font-size-sm": 11,
+      "--font-size-md": 12,
+      "--font-size-base": 13,
+      "--font-size-lg": 14,
+      "--font-size-xl": 15,
+      "--font-size-2xl": 16,
+      "--font-size-3xl": 17,
+      "--font-size-4xl": 19,
+    } as const;
+    for (const [token, baseSize] of Object.entries(sizes)) {
+      document.documentElement.style.setProperty(
+        token,
+        `${Math.round(baseSize * scale * 100) / 100}px`,
+      );
+    }
+  }, [preferences.uiFontSize]);
 
   useEffect(() => {
     function runShortcut(shortcut: string): void {
@@ -159,9 +317,20 @@ export default function App() {
         event.preventDefault();
         setPaletteOpen(true);
       }
-      if (command && event.key.toLowerCase() === "b") {
+      if (command && event.shiftKey && event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        openWorkspaceTab("browser");
+      } else if (command && event.key.toLowerCase() === "b") {
         event.preventDefault();
         toggleSidebar();
+      }
+      if (command && event.key.toLowerCase() === "j") {
+        event.preventDefault();
+        openWorkspaceTab("terminal");
+      }
+      if (command && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        openWorkspaceTab("files");
       }
       if (command && event.key === ",") {
         event.preventDefault();
@@ -174,7 +343,7 @@ export default function App() {
       unsubscribe();
       window.removeEventListener("keydown", keydown);
     };
-  }, [chooseWorkspace, newTask, setView, toggleSidebar]);
+  }, [chooseWorkspace, newTask, openWorkspaceTab, setView, toggleSidebar]);
 
   useEffect(() => {
     if (
@@ -241,32 +410,57 @@ export default function App() {
 
   return (
     <div className={`app-shell ${referenceCapture ? "reference-capture" : ""}`}>
-      {controller.preferences.sidebarOpen ? (
+      {controller.view !== "settings" &&
+      !narrowLayout &&
+      controller.preferences.sidebarOpen ? (
         <Sidebar
           account={controller.account}
           activeThread={controller.activeThread}
           onArchive={(thread) => void controller.archiveThread(thread)}
           onChooseWorkspace={() => void controller.chooseWorkspace()}
           onNewTask={controller.newTask}
+          onNewTaskInWorkspace={(workspace) =>
+            void controller.selectWorkspace(workspace)
+          }
           onLoadMore={() => void controller.loadMoreThreads()}
           onSearch={() => setPaletteOpen(true)}
           onSelectThread={controller.selectThread}
+          onSetGrouping={setSidebarGrouping}
           onSetView={controller.setView}
           onToggle={toggleSidebar}
           recentWorkspaces={controller.preferences.recentWorkspaces}
           threads={controller.threads}
           hasMoreThreads={Boolean(controller.threadsNextCursor)}
           view={controller.view}
+          grouping={sidebarGrouping}
         />
-      ) : (
-        <button
-          aria-label="Show sidebar"
-          className="show-sidebar"
-          onClick={toggleSidebar}
-        >
-          <PanelLeftOpen size={15} />
-        </button>
-      )}
+      ) : controller.view !== "settings" ? (
+        <div className="collapsed-navigation">
+          <button
+            aria-label="Show Sidebar"
+            className="show-sidebar"
+            onClick={toggleSidebar}
+          >
+            <PanelLeft size={15} />
+          </button>
+          <button
+            aria-label="Search"
+            className="collapsed-search"
+            onClick={() => setPaletteOpen(true)}
+          >
+            <Search size={14} />
+          </button>
+          {controller.view === "thread" && !narrowSidebarOpen ? (
+            <button
+              aria-label="New Agent"
+              className="collapsed-new-agent"
+              onClick={controller.newTask}
+            >
+              <Plus size={15} />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="main-workspace">
         {controller.view === "new" ? (
@@ -276,7 +470,9 @@ export default function App() {
           />
         ) : controller.view === "thread" ? (
           <ConversationView
+            changesOpen={workspaceVisible && activeWorkspaceTab === "changes"}
             controller={controller}
+            onOpenChange={openChangedFile}
             onOpenFile={openFile}
             onOpenTerminal={openTerminal}
             onShowChanges={showChanges}
@@ -287,7 +483,10 @@ export default function App() {
         ) : controller.view === "customize" ? (
           <CustomizeView controller={controller} />
         ) : (
-          <SettingsView controller={controller} />
+          <SettingsView
+            controller={controller}
+            onClose={() => controller.setView(viewBeforeSettings)}
+          />
         )}
 
         {workspaceMounted ? (
@@ -301,18 +500,59 @@ export default function App() {
             <WorkspacePanel
               controller={controller}
               hidden={!workspaceVisible}
-              onClose={() =>
-                void controller.updatePreferences({ rightPanelOpen: false })
-              }
+              onClose={() => {
+                if (controller.view === "new") {
+                  setNewTaskWorkspaceOpen(false);
+                } else {
+                  void controller.updatePreferences({ rightPanelOpen: false });
+                }
+                void setNativeWorkspaceVisibility("closed");
+              }}
+              onChangeRequestConsumed={() => setRequestedChangePath(null)}
               onPreviewReady={() => setPreviewReady(true)}
               onRequestConsumed={() => setRequestedFile(null)}
               onTabRequestConsumed={() => setRequestedWorkspaceTab(null)}
+              onTabChange={setActiveWorkspaceTab}
               requestedFile={requestedFile}
+              requestedChangePath={requestedChangePath}
               requestedTab={requestedWorkspaceTab}
             />
           </Suspense>
         ) : null}
       </div>
+
+      {controller.view !== "settings" && narrowLayout && narrowSidebarOpen ? (
+        <>
+          <button
+            aria-label="Close sidebar"
+            className="sidebar-overlay-scrim"
+            onClick={() => setNarrowSidebarOpen(false)}
+          />
+          <div className="narrow-sidebar-layer">
+            <Sidebar
+              account={controller.account}
+              activeThread={controller.activeThread}
+              onArchive={(thread) => void controller.archiveThread(thread)}
+              onChooseWorkspace={() => void controller.chooseWorkspace()}
+              onLoadMore={() => void controller.loadMoreThreads()}
+              onNewTask={controller.newTask}
+              onNewTaskInWorkspace={(workspace) =>
+                void controller.selectWorkspace(workspace)
+              }
+              onSearch={() => setPaletteOpen(true)}
+              onSelectThread={controller.selectThread}
+              onSetGrouping={setSidebarGrouping}
+              onSetView={controller.setView}
+              onToggle={toggleSidebar}
+              recentWorkspaces={controller.preferences.recentWorkspaces}
+              threads={controller.threads}
+              hasMoreThreads={Boolean(controller.threadsNextCursor)}
+              view={controller.view}
+              grouping={sidebarGrouping}
+            />
+          </div>
+        </>
+      ) : null}
 
       {controller.runtime.phase === "starting" ||
       controller.runtime.phase === "restarting" ? (
@@ -344,13 +584,39 @@ export default function App() {
           onNewTask={controller.newTask}
           onOpenFile={openFile}
           onOpenRepository={() => void controller.chooseWorkspace()}
+          onPerformAppAction={(action) => {
+            void window.codexDesktop
+              .performAppAction(action)
+              .catch((error) =>
+                controller.addToast(
+                  error instanceof Error ? error.message : String(error),
+                  "danger",
+                ),
+              );
+          }}
+          onResetAdViews={() => {
+            window.localStorage.removeItem("cursor-in-app-ad-views");
+            controller.addToast("In-app ad views reset.", "success");
+          }}
           onSelectThread={controller.selectThread}
+          onSetGrouping={setSidebarGrouping}
+          onSetModel={(selectedModel) =>
+            void controller.updatePreferences({ selectedModel })
+          }
+          onSetTheme={(theme) => void controller.updatePreferences({ theme })}
           onSetView={controller.setView}
           onToggleWorkspace={toggleWorkspace}
+          onUnavailable={(label) =>
+            controller.addToast(`${label} is not available on this system.`)
+          }
           threads={controller.threads}
           workspace={
-            controller.activeThread?.cwd ?? controller.preferences.lastWorkspace
+            controller.activeThread?.cwd ??
+            controller.preferences.lastWorkspace ??
+            controller.threads[0]?.cwd ??
+            null
           }
+          workspaceVisible={workspaceVisible}
         />
       ) : null}
       {approvalRequest ? (

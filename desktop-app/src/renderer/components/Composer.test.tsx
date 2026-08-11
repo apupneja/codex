@@ -15,6 +15,7 @@ const preferences: DesktopPreferences = {
   selectedModel: "gpt-test",
   sidebarOpen: true,
   theme: "dark",
+  uiFontSize: 13,
 };
 
 const model = {
@@ -72,7 +73,7 @@ describe("Composer", () => {
     expect(input).toHaveValue("Keep this draft");
   });
 
-  it("only offers reasoning efforts supported by the selected model", () => {
+  it("summarizes the reasoning effort supported by the selected model", () => {
     const constrainedModel = {
       ...model,
       defaultReasoningEffort: "minimal",
@@ -93,12 +94,12 @@ describe("Composer", () => {
       />,
     );
 
-    const effort = screen.getByRole("combobox", { name: "Reasoning effort" });
-    expect(effort).toHaveValue("minimal");
+    expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent(
+      "GPT Test",
+    );
     expect(
-      screen.queryByRole("option", { name: "Deep" }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Balanced" })).toBeVisible();
+      screen.getByRole("combobox", { name: "Reasoning effort" }),
+    ).toHaveTextContent("Minimal");
   });
 
   it("uses the single-row conversation controls and swaps voice for send", async () => {
@@ -116,12 +117,19 @@ describe("Composer", () => {
       />,
     );
 
-    const input = screen.getByRole("textbox", { name: "Describe a task" });
-    expect(screen.getByRole("button", { name: "Attach files" })).toBeVisible();
+    const input = screen.getByRole("textbox", { name: "Send follow-up" });
+    expect(
+      screen.getByRole("button", { name: "Add agents, context, tools" }),
+    ).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Start voice input" }),
     ).toBeVisible();
-    expect(screen.getByRole("combobox", { name: "Model" })).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent(
+      "GPT Test",
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Reasoning effort" }),
+    ).toHaveTextContent("Deep");
 
     fireEvent.change(input, { target: { value: "Ship the UI" } });
     fireEvent.click(screen.getByRole("button", { name: "Send prompt" }));
@@ -129,5 +137,28 @@ describe("Composer", () => {
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith("Ship the UI", []),
     );
+  });
+
+  it("opens the agents, context, and tools menu", () => {
+    render(
+      <Composer
+        active={false}
+        models={[model]}
+        onInterrupt={() => undefined}
+        onSubmit={() => undefined}
+        onToast={() => undefined}
+        preferences={preferences}
+        updatePreferences={async () => preferences}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add agents, context, tools" }),
+    );
+    expect(
+      screen.getByRole("listbox", { name: "Add agents, context, tools" }),
+    ).toBeVisible();
+    expect(screen.getByRole("option", { name: /Plan/ })).toBeVisible();
+    expect(screen.getByRole("option", { name: "File" })).toBeVisible();
   });
 });

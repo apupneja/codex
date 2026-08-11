@@ -1,0 +1,84 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: var(--font-weight-ui);
+}
+
+button {
+  border: 0;
+}
+
+button,
+select,
+[role="button"],
+[role="combobox"],
+[role="option"] {
+  cursor: default;
+}
+
+:where(button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+:where(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+button:hover:not(:disabled),
+[role="button"]:hover:not([aria-disabled="true"]) {
+  transition:
+    background-color var(--transition-control),
+    border-color var(--transition-control),
+    color var(--transition-control);
+}
+
+kbd {
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+code,
+pre,
+kbd[data-monospace="true"] {
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

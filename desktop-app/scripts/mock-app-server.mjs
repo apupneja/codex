@@ -1,5 +1,5 @@
 import readline from "node:readline";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 const input = readline.createInterface({
   input: process.stdin,
@@ -7,6 +7,7 @@ const input = readline.createInterface({
 });
 let pendingDesktopTest = null;
 const MOCK_THREAD_ID = "019mock0-0000-7000-8000-000000000001";
+const NEW_THREAD_ID = "019mock0-0000-7000-8000-000000000003";
 const workspaceRoot =
   process.env.CODEX_DESKTOP_SMOKE_WORKSPACE_ROOT ?? process.cwd();
 const signalArenaWorkspace = join(workspaceRoot, "signal-arena");
@@ -163,9 +164,57 @@ function populatedTurns(cwd) {
           phase: "commentary",
           memoryCitation: null,
         },
+        {
+          type: "fileChange",
+          id: "file-change-smoke-1",
+          status: "completed",
+          changes: [
+            {
+              path: "src/pages/HomePage.tsx",
+              kind: { type: "update", move_path: null },
+              diff: "@@ -18 +18 @@\n-      <h1>Arenas</h1>\n+      <h1>Live Arenas</h1>",
+            },
+            {
+              path: "src/components/Header.tsx",
+              kind: { type: "update", move_path: null },
+              diff: "@@ -12 +12 @@\n-        <NavLink>Arenas</NavLink>\n+        <NavLink>Live Arenas</NavLink>",
+            },
+            {
+              path: "capture-ui.mjs",
+              kind: { type: "add" },
+              diff: Array.from(
+                { length: 26 },
+                (_, index) => `line ${index + 1}`,
+              ).join("\n"),
+            },
+          ],
+        },
       ],
     },
   ];
+}
+
+function completedTurn(prompt) {
+  const now = Math.floor(Date.now() / 1_000);
+  return {
+    id: "turn-new-1",
+    itemsView: "full",
+    status: "completed",
+    error: null,
+    startedAt: now,
+    completedAt: now,
+    durationMs: 250,
+    items: [
+      userMessage("user-new-1", prompt),
+      {
+        type: "agentMessage",
+        id: "agent-new-1",
+        text: "The mock coding workflow completed successfully.",
+        phase: "final_answer",
+        memoryCitation: null,
+      },
+    ],
+  };
 }
 
 function thread(
@@ -204,6 +253,7 @@ function thread(
       branch: "apupneja/ui-live-arenas-title",
       originUrl: null,
     },
+    pullRequestNumber: id === MOCK_THREAD_ID ? 11 : null,
     name,
     turns: turns ? populatedTurns(cwd) : [],
   };
@@ -272,8 +322,19 @@ input.on("line", (line) => {
       });
       break;
     case "thread/start":
-      reply(message.id, { thread: thread(params.cwd) });
+      reply(message.id, {
+        thread: thread(params.cwd, {
+          id: NEW_THREAD_ID,
+          name: "Untitled task",
+        }),
+      });
       break;
+    case "turn/start": {
+      const prompt =
+        params.input?.find((item) => item?.type === "text")?.text ?? "";
+      reply(message.id, { turn: completedTurn(prompt) });
+      break;
+    }
     case "thread/read":
     case "thread/resume":
       reply(message.id, {
@@ -283,11 +344,39 @@ input.on("line", (line) => {
       break;
     case "fs/readDirectory":
       reply(message.id, {
-        entries: [
-          { fileName: "src", isDirectory: true, isFile: false },
-          { fileName: "package.json", isDirectory: false, isFile: true },
-        ],
+        entries:
+          basename(params.path ?? signalArenaWorkspace) === "src"
+            ? [{ fileName: "index.ts", isDirectory: false, isFile: true }]
+            : [
+                { fileName: "src", isDirectory: true, isFile: false },
+                {
+                  fileName: "capture-ui.mjs",
+                  isDirectory: false,
+                  isFile: true,
+                },
+                { fileName: "package.json", isDirectory: false, isFile: true },
+              ],
       });
+      break;
+    case "fs/readFile": {
+      const fileName = basename(params.path ?? "");
+      const contents =
+        fileName === "package.json"
+          ? JSON.stringify(
+              { name: "signal-arena", private: true, scripts: { dev: "vite" } },
+              null,
+              2,
+            )
+          : fileName === "index.ts"
+            ? 'export const message = "Signal Arena";\n'
+            : "";
+      reply(message.id, {
+        dataBase64: Buffer.from(contents).toString("base64"),
+      });
+      break;
+    }
+    case "fs/writeFile":
+      reply(message.id, {});
       break;
     case "plugin/list":
       reply(message.id, { marketplaces: [] });

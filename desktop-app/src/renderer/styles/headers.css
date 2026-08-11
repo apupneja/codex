@@ -1,0 +1,85 @@
+/* Shared headers */
+
+.workbench-header {
+  -webkit-app-region: drag;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex: 0 0 35px;
+  height: 35px;
+  min-width: 0;
+  padding: 0 8px 0 13px;
+}
+
+.workbench-header button {
+  -webkit-app-region: no-drag;
+}
+
+.window-drag-fill {
+  flex: 1;
+}
+
+.header-actions {
+  align-items: center;
+  display: flex;
+  gap: 3px;
+  position: relative;
+}
+
+.task-actions-menu {
+  background: var(--elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow);
+  display: grid;
+  padding: 4px;
+  position: absolute;
+  right: 0;
+  top: 33px;
+  width: 192px;
+  z-index: 30;
+}
+
+.task-actions-menu button {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: 8px;
+  height: 30px;
+  justify-content: space-between;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.task-actions-menu kbd {
+  margin-left: auto;
+}
+
+.task-actions-menu button:hover {
+  background: var(--elevated-hover);
+  color: var(--text-bright);
+}
+
+.task-actions-menu button.danger:hover {
+  color: var(--danger);
+}
+
+.header-button {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: 5px;
+  height: 27px;
+  padding: 0 8px;
+}
+
+.header-button:hover {
+  background: var(--elevated-hover);
+  color: var(--text-bright);
+}

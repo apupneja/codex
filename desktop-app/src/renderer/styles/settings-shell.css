@@ -1,0 +1,217 @@
+.settings-shell {
+  background: var(--bg);
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.settings-sidebar {
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex: 0 0 260px;
+  flex-direction: column;
+  min-width: 0;
+  padding: 37px 8px 10px;
+}
+
+.settings-hide-sidebar,
+.settings-show-sidebar {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  height: 27px;
+  justify-content: center;
+  position: absolute;
+  top: 8px;
+  width: 27px;
+}
+
+.settings-hide-sidebar {
+  left: 74px;
+}
+
+.settings-show-sidebar {
+  left: 74px;
+  z-index: 2;
+}
+
+.settings-hide-sidebar:hover,
+.settings-show-sidebar:hover {
+  background: var(--elevated);
+  color: var(--text-bright);
+}
+
+.settings-sidebar-scrim {
+  animation: backdropIn var(--transition-layout) both;
+  background: var(--scrim);
+  inset: 0;
+  padding: 0;
+  position: absolute;
+  z-index: 51;
+}
+
+.settings-back {
+  align-items: center;
+  align-self: flex-start;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: 5px;
+  height: 26px;
+  margin: 0 0 15px 4px;
+  padding: 0 5px;
+}
+
+.settings-back:hover {
+  background: var(--elevated-hover);
+  color: var(--text-bright);
+}
+
+.settings-search {
+  align-items: center;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  gap: 6px;
+  height: 27px;
+  padding: 0 8px;
+}
+
+.settings-search input {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  min-width: 0;
+  outline: 0;
+  width: 100%;
+}
+
+.settings-sidebar nav {
+  display: grid;
+  gap: 1px;
+  margin-top: 21px;
+}
+
+.settings-sidebar nav button {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  display: flex;
+  font-size: var(--font-size-md);
+  gap: 5px;
+  height: 31px;
+  padding: 0 9px;
+  text-align: left;
+}
+
+.settings-sidebar nav button.settings-nav-group {
+  margin-top: 15px;
+}
+
+.settings-sidebar nav button svg {
+  color: var(--muted);
+  flex: none;
+}
+
+.settings-sidebar nav button .settings-external-icon {
+  margin-left: auto;
+}
+
+.settings-sidebar nav button.active,
+.settings-sidebar nav button:hover {
+  background: var(--overlay-soft);
+  color: var(--text-bright);
+}
+
+:root[data-theme="light"] .settings-sidebar nav button.active,
+:root[data-theme="light"] .settings-sidebar nav button:hover {
+  background: var(--overlay-soft);
+}
+
+.settings-no-results {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  padding: 7px 9px;
+}
+
+.settings-sidebar-footer {
+  display: grid;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.settings-sidebar .onboarding-card {
+  height: 78px;
+}
+
+.settings-account-controls {
+  position: relative;
+}
+
+.settings-account-row {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-control);
+  color: var(--text-dim);
+  display: flex;
+  gap: 8px;
+  padding: 7px 34px 7px 6px;
+  text-align: left;
+  width: 100%;
+}
+
+.settings-account-row:hover {
+  background: var(--overlay-soft);
+}
+
+.settings-account-row > span:nth-child(2) {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+}
+
+.settings-account-row strong {
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-account-row small {
+  color: var(--muted);
+  font-size: var(--font-size-2xs);
+}
+
+.settings-close-button {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  height: 26px;
+  justify-content: center;
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+}
+
+.settings-close-button:hover {
+  background: var(--overlay-soft);
+  color: var(--text-bright);
+}

@@ -1,0 +1,139 @@
+.app-shell {
+  background: var(--bg);
+  display: flex;
+  height: 100%;
+  isolation: isolate;
+  position: relative;
+}
+
+.app-shell.reference-capture {
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+.app-shell.reference-capture::after {
+  border: 0;
+  border-bottom: 1px solid var(--window-divider);
+  border-radius: var(--radius-panel);
+  border-right: 1px solid var(--window-divider);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1000;
+}
+
+.app-shell.reference-capture::before {
+  border-radius: var(--radius-panel);
+  border-top: 1px solid var(--window-divider-highlight);
+  content: "";
+  inset: 1px 0 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1000;
+}
+
+.app-shell.reference-capture .turn {
+  animation: none;
+}
+
+.main-workspace {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.renderer-error {
+  align-items: center;
+  background: var(--bg);
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+}
+
+.renderer-error > svg {
+  color: var(--danger);
+}
+
+.renderer-error strong {
+  color: var(--text-bright);
+  font-size: var(--font-size-xl);
+}
+
+.renderer-error p {
+  line-height: 1.5;
+  margin: 0;
+  max-width: 420px;
+}
+
+.renderer-error details {
+  max-width: min(620px, 100%);
+}
+
+.renderer-error code {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.renderer-error .button-primary {
+  margin-top: 8px;
+}
+
+.icon-button {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  width: 28px;
+}
+
+.icon-button.subtle {
+  color: var(--muted);
+}
+
+.icon-button:hover {
+  background: var(--elevated-hover);
+  color: var(--text-bright);
+}
+
+.button-primary,
+.button-secondary {
+  align-items: center;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  gap: 6px;
+  height: 32px;
+  justify-content: center;
+  padding: 0 13px;
+}
+
+.button-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.button-primary:hover {
+  filter: brightness(0.92);
+}
+
+.button-secondary {
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.button-secondary:hover {
+  background: var(--elevated-hover);
+}

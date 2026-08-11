@@ -1,17 +1,22 @@
 import {
   ArrowUp,
-  AtSign,
-  ChevronDown,
+  Bug,
+  ChevronRight,
+  CircleHelp,
+  ListTodo,
   LockKeyhole,
   Mic,
   Paperclip,
+  Plug,
   Plus,
   Square,
-  WandSparkles,
+  Workflow,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { DesktopPreferences, Model } from "../../shared/types";
+import { MenuItem, MenuSurface } from "../design-system";
+import { ComposerModelControls } from "./ComposerModelControls";
 
 type SpeechRecognitionEventLike = Event & {
   results: ArrayLike<{ 0: { transcript: string } }>;
@@ -43,26 +48,89 @@ type ComposerProps = {
     attachments: string[],
   ): boolean | void | Promise<boolean | void>;
   onToast(message: string): void;
+  placeholder?: string;
   preferences: DesktopPreferences;
   updatePreferences(
     patch: Partial<DesktopPreferences>,
   ): Promise<DesktopPreferences>;
 };
 
-function effortLabel(effort: string): string {
-  const labels: Record<string, string> = {
-    none: "None",
-    minimal: "Minimal",
-    low: "Fast",
-    medium: "Balanced",
-    high: "Deep",
-    xhigh: "Max",
-    max: "Maximum",
-    ultra: "Ultra",
+type ComposerToolsMenuProps = {
+  onClose(): void;
+  onFile(): void;
+  onToast(message: string): void;
+};
+
+function ComposerToolsMenu({
+  onClose,
+  onFile,
+  onToast,
+}: ComposerToolsMenuProps) {
+  const chooseMode = (mode: string) => {
+    onToast(`${mode} mode selected for the next task.`);
+    onClose();
   };
   return (
-    labels[effort] ??
-    effort.replace(/[-_]/g, " ").replace(/^./, (value) => value.toUpperCase())
+    <MenuSurface
+      aria-label="Add agents, context, tools"
+      className="composer-tools-menu"
+    >
+      <div className="composer-tools-search">
+        <input
+          aria-label="Search skills, context, chats"
+          placeholder="Search skills, context, chats..."
+        />
+      </div>
+      <div
+        aria-label="Add agents, context, tools"
+        className="composer-tools-menu-list"
+        role="listbox"
+      >
+        <MenuItem onClick={() => chooseMode("Plan")} role="option">
+          <ListTodo aria-hidden="true" size={12} />
+          <span>
+            Plan <small>Generate an implementation plan</small>
+          </span>
+        </MenuItem>
+        <MenuItem onClick={() => chooseMode("Debug")} role="option">
+          <Bug aria-hidden="true" size={12} />
+          <span>
+            Debug <small>Pinpoint the root cause of an issue</small>
+          </span>
+        </MenuItem>
+        <MenuItem onClick={() => chooseMode("Multitask")} role="option">
+          <Workflow aria-hidden="true" size={12} />
+          <span>
+            Multitask <small>Orchestrate multiple subagents in parallel</small>
+          </span>
+        </MenuItem>
+        <MenuItem onClick={() => chooseMode("Ask")} role="option">
+          <CircleHelp aria-hidden="true" size={12} />
+          <span>
+            Ask <small>Answer questions without making edits</small>
+          </span>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            onFile();
+            onClose();
+          }}
+          role="option"
+        >
+          <Paperclip aria-hidden="true" size={12} />
+          <span>File</span>
+        </MenuItem>
+        <MenuItem onClick={() => chooseMode("MCP")} role="option">
+          <Plug aria-hidden="true" size={12} />
+          <span>MCP</span>
+          <ChevronRight
+            aria-hidden="true"
+            className="composer-tools-menu-trailing"
+            size={12}
+          />
+        </MenuItem>
+      </div>
+    </MenuSurface>
   );
 }
 
@@ -74,6 +142,7 @@ export function Composer({
   onInterrupt,
   onSubmit,
   onToast,
+  placeholder,
   preferences,
   updatePreferences,
 }: ComposerProps) {
@@ -81,6 +150,7 @@ export function Composer({
   const [submitting, setSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   const [listening, setListening] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
 
@@ -183,25 +253,6 @@ export function Composer({
     }
   }
 
-  const selectedModel =
-    models.find((model) => model.id === preferences.selectedModel) ??
-    models.find((model) => model.isDefault) ??
-    models[0];
-  const effortOptions = selectedModel?.supportedReasoningEfforts?.length
-    ? selectedModel.supportedReasoningEfforts
-    : [
-        { reasoningEffort: "low", description: "Fast" },
-        { reasoningEffort: "medium", description: "Balanced" },
-        { reasoningEffort: "high", description: "Deep reasoning" },
-      ];
-  const effectiveEffort = effortOptions.some(
-    (option) => option.reasoningEffort === preferences.selectedEffort,
-  )
-    ? preferences.selectedEffort
-    : (selectedModel?.defaultReasoningEffort ??
-      effortOptions[0]?.reasoningEffort ??
-      "medium");
-
   if (compact) {
     return (
       <div className={`composer composer-compact ${active ? "is-active" : ""}`}>
@@ -226,16 +277,25 @@ export function Composer({
         ) : null}
         <div className="compact-composer-row">
           <button
-            aria-label="Attach files"
+            aria-label="Add agents, context, tools"
+            aria-haspopup="menu"
             className="compact-add-button"
-            onClick={() => void chooseAttachments()}
+            aria-expanded={toolsOpen}
+            onClick={() => setToolsOpen((value) => !value)}
             title="Attach files"
           >
             <Plus size={18} />
           </button>
+          {toolsOpen ? (
+            <ComposerToolsMenu
+              onClose={() => setToolsOpen(false)}
+              onFile={() => void chooseAttachments()}
+              onToast={onToast}
+            />
+          ) : null}
           <textarea
             ref={textarea}
-            aria-label={active ? "Send follow-up" : "Describe a task"}
+            aria-label="Send follow-up"
             disabled={disabled || submitting}
             maxLength={MAX_PROMPT_CHARACTERS}
             onChange={(event) => setText(event.target.value)}
@@ -254,55 +314,12 @@ export function Composer({
             value={text}
           />
           <div className="compact-composer-controls">
-            <label className="compact-model-picker" title="Choose model">
-              <select
-                aria-label="Model"
-                onChange={(event) => {
-                  const nextModel = models.find(
-                    (model) => model.id === event.target.value,
-                  );
-                  const supportsCurrent =
-                    nextModel?.supportedReasoningEfforts.some(
-                      (option) =>
-                        option.reasoningEffort === preferences.selectedEffort,
-                    ) ?? true;
-                  void updatePreferences({
-                    selectedModel: event.target.value,
-                    ...(!supportsCurrent && nextModel
-                      ? { selectedEffort: nextModel.defaultReasoningEffort }
-                      : {}),
-                  });
-                }}
-                value={selectedModel?.id ?? ""}
-              >
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="compact-effort-picker" title="Reasoning effort">
-              <select
-                aria-label="Reasoning effort"
-                onChange={(event) =>
-                  void updatePreferences({
-                    selectedEffort: event.target.value,
-                  })
-                }
-                value={effectiveEffort}
-              >
-                {effortOptions.map((option) => (
-                  <option
-                    key={option.reasoningEffort}
-                    title={option.description}
-                    value={option.reasoningEffort}
-                  >
-                    {effortLabel(option.reasoningEffort)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ComposerModelControls
+              compact
+              models={models}
+              preferences={preferences}
+              updatePreferences={updatePreferences}
+            />
             <LockKeyhole aria-hidden="true" size={12} />
             {active ? (
               <button
@@ -364,7 +381,10 @@ export function Composer({
       ) : null}
       <textarea
         ref={textarea}
-        aria-label={active ? "Send follow-up" : "Describe a task"}
+        aria-label={
+          active ? "Send follow-up" : (placeholder ?? "Describe a task")
+        }
+        autoFocus={!compact}
         disabled={disabled || submitting}
         maxLength={MAX_PROMPT_CHARACTERS}
         onChange={(event) => setText(event.target.value)}
@@ -378,96 +398,40 @@ export function Composer({
             void submit();
           }
         }}
-        placeholder={active ? "Send follow-up" : "Plan, build, or ask anything"}
+        placeholder={
+          placeholder ??
+          (active ? "Send follow-up" : "Plan, build, or ask anything")
+        }
         rows={1}
         value={text}
       />
       <div className="composer-toolbar">
         <div className="composer-tools">
           <button
-            aria-label="Attach files"
-            className="icon-button subtle"
-            onClick={() => void chooseAttachments()}
+            aria-label="Add agents, context, tools"
+            aria-haspopup="menu"
+            className="composer-add-button"
+            aria-expanded={toolsOpen}
+            onClick={() => setToolsOpen((value) => !value)}
             title="Attach files"
           >
-            <Paperclip size={16} />
+            <Plus size={16} />
           </button>
-          <button
-            aria-label="Add context"
-            className="icon-button subtle"
-            onClick={() => {
-              setText(
-                (current) =>
-                  `${current}${current && !current.endsWith(" ") ? " " : ""}@`,
-              );
-              textarea.current?.focus();
-            }}
-            title="Mention context"
-          >
-            <AtSign size={16} />
-          </button>
-          <label className="model-picker" title="Choose model">
-            <WandSparkles size={14} />
-            <select
-              aria-label="Model"
-              onChange={(event) => {
-                const nextModel = models.find(
-                  (model) => model.id === event.target.value,
-                );
-                const supportsCurrent =
-                  nextModel?.supportedReasoningEfforts.some(
-                    (option) =>
-                      option.reasoningEffort === preferences.selectedEffort,
-                  ) ?? true;
-                void updatePreferences({
-                  selectedModel: event.target.value,
-                  ...(!supportsCurrent && nextModel
-                    ? { selectedEffort: nextModel.defaultReasoningEffort }
-                    : {}),
-                });
-              }}
-              value={selectedModel?.id ?? ""}
-            >
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.displayName}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={12} />
-          </label>
-          <label className="effort-picker" title="Reasoning effort">
-            <select
-              aria-label="Reasoning effort"
-              onChange={(event) =>
-                void updatePreferences({
-                  selectedEffort: event.target.value,
-                })
-              }
-              value={effectiveEffort}
-            >
-              {effortOptions.map((option) => (
-                <option
-                  key={option.reasoningEffort}
-                  title={option.description}
-                  value={option.reasoningEffort}
-                >
-                  {effortLabel(option.reasoningEffort)}
-                </option>
-              ))}
-            </select>
-          </label>
+          {toolsOpen ? (
+            <ComposerToolsMenu
+              onClose={() => setToolsOpen(false)}
+              onFile={() => void chooseAttachments()}
+              onToast={onToast}
+            />
+          ) : null}
+          <ComposerModelControls
+            models={models}
+            preferences={preferences}
+            updatePreferences={updatePreferences}
+          />
+          <LockKeyhole aria-hidden="true" size={11} />
         </div>
         <div className="composer-actions">
-          <span className="composer-hint">↵ send · ⇧↵ newline</span>
-          <button
-            aria-label={listening ? "Stop voice input" : "Start voice input"}
-            className={`icon-button ${listening ? "listening" : "subtle"}`}
-            onClick={toggleDictation}
-            title="Voice input"
-          >
-            <Mic size={16} />
-          </button>
           {active ? (
             <button
               aria-label="Stop task"
@@ -476,14 +440,23 @@ export function Composer({
             >
               <Square fill="currentColor" size={11} />
             </button>
-          ) : (
+          ) : text.trim() ? (
             <button
               aria-label="Send prompt"
               className="send-button"
-              disabled={!text.trim() || disabled || submitting}
+              disabled={disabled || submitting}
               onClick={() => void submit()}
             >
               <ArrowUp size={17} strokeWidth={2.4} />
+            </button>
+          ) : (
+            <button
+              aria-label={listening ? "Stop voice input" : "Start voice input"}
+              className={`composer-voice-button ${listening ? "listening" : ""}`}
+              onClick={toggleDictation}
+              title="Voice input"
+            >
+              <Mic size={15} />
             </button>
           )}
         </div>

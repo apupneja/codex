@@ -113,4 +113,60 @@ describe("AppServerRpcClient", () => {
       client.request<JsonObject>("desktop/test/delayed", { delayMs: 20 }, null),
     ).resolves.toEqual({ delayed: true });
   });
+
+  it("supports the complete mock coding workflow", async () => {
+    const client = new AppServerRpcClient();
+    clients.push(client);
+    await client.start(
+      {
+        args: [mockServer],
+        command: process.execPath,
+        cwd: appRoot,
+        env: { ...process.env },
+      },
+      { name: "desktop_test", title: "Desktop test", version: "0.0.0" },
+    );
+
+    const started = await client.request<JsonObject>("thread/start", {
+      approvalPolicy: "never",
+      cwd: appRoot,
+      model: "composer-2.5",
+      sandbox: "read-only",
+    });
+    const thread = started.thread as JsonObject;
+    if (typeof thread.id !== "string") {
+      throw new TypeError("Mock thread/start response is missing an id");
+    }
+    const completed = await client.request<JsonObject>("turn/start", {
+      effort: "low",
+      input: [{ type: "text", text: "Audit the workflow", text_elements: [] }],
+      model: "composer-2.5",
+      threadId: thread.id,
+    });
+    const turn = completed.turn as JsonObject;
+
+    expect(thread).toMatchObject({
+      cwd: appRoot,
+      id: expect.any(String),
+      turns: [],
+    });
+    expect(turn).toMatchObject({
+      items: [
+        {
+          content: [
+            {
+              text: "Audit the workflow",
+              type: "text",
+            },
+          ],
+          type: "userMessage",
+        },
+        {
+          text: "The mock coding workflow completed successfully.",
+          type: "agentMessage",
+        },
+      ],
+      status: "completed",
+    });
+  });
 });

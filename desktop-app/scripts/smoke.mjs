@@ -30,6 +30,11 @@ await Promise.all([
   mkdir(join(temporaryRoot, "intusent-site")),
 ]);
 await writeFile(
+  join(temporaryRoot, "signal-arena", "capture-ui.mjs"),
+  'export const capture = "ready";\n',
+  "utf8",
+);
+await writeFile(
   join(userData, "desktop-preferences.json"),
   JSON.stringify({
     approvalPolicy: "on-request",

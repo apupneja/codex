@@ -1,0 +1,292 @@
+.ui-menu {
+  background: var(--menu-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--shadow-menu);
+  color: var(--text);
+  padding: var(--space-2);
+}
+
+.ui-menu-item {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  display: flex;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-ui);
+  gap: var(--space-4);
+  min-height: var(--control-height-md);
+  padding: var(--space-2) var(--space-4);
+  text-align: left;
+  width: 100%;
+}
+
+.ui-menu button {
+  border-radius: var(--radius-control);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-ui);
+}
+
+.ui-menu :where(button:hover, button.highlighted, button[aria-checked="true"]) {
+  background: var(--overlay-hover);
+  color: var(--text-bright);
+}
+
+.ui-menu-item:hover,
+.ui-menu-item.highlighted,
+.ui-menu-item[aria-checked="true"],
+.ui-menu-item[aria-selected="true"] {
+  background: var(--overlay-hover);
+  color: var(--text-bright);
+}
+
+.ui-menu-item.destructive {
+  color: var(--danger);
+}
+
+.ui-menu-label {
+  color: var(--muted);
+  display: block;
+  font-size: var(--font-size-sm);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+}
+
+.ui-menu-separator {
+  background: var(--border);
+  height: 1px;
+  margin: var(--space-2);
+}
+
+.ui-select {
+  min-width: 98px;
+  position: relative;
+}
+
+.ui-select-trigger {
+  align-items: center;
+  background: var(--overlay-hover);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--text-bright);
+  display: flex;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  gap: var(--space-3);
+  height: var(--control-height-sm);
+  justify-content: space-between;
+  min-width: 98px;
+  overflow: hidden;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  text-align: left;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.ui-select-trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-select-trigger > svg {
+  color: var(--muted);
+  flex: none;
+  transition: transform var(--transition-control);
+}
+
+.ui-select-trigger:hover,
+.ui-select.open .ui-select-trigger {
+  background: var(--overlay-active);
+}
+
+.ui-select.open .ui-select-trigger > svg {
+  transform: rotate(180deg);
+}
+
+.ui-select.invalid .ui-select-trigger {
+  border-color: color-mix(in srgb, var(--danger) 65%, transparent);
+}
+
+.ui-select-menu {
+  display: grid;
+  gap: var(--space-1);
+  max-height: min(300px, calc(100vh - var(--space-12)));
+  min-width: max(100%, 200px);
+  overflow-y: auto;
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 120;
+}
+
+.ui-select-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
+  white-space: nowrap;
+}
+
+.ui-select-option > span {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ui-select-option small {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.ui-select-option > svg {
+  color: transparent;
+  justify-self: end;
+}
+
+.ui-select-option > svg.selected {
+  color: currentColor;
+}
+
+.settings-row .ui-select {
+  max-width: 250px;
+}
+
+.settings-static-value {
+  color: var(--text-dim);
+  font-size: var(--font-size-base);
+}
+
+.elicitation-field > .ui-select {
+  width: 100%;
+}
+
+.elicitation-field > .ui-select .ui-select-trigger {
+  background: var(--panel-soft);
+  border-color: var(--border-strong);
+  height: var(--control-height-md);
+}
+
+.composer-model-controls {
+  align-items: center;
+  display: flex;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.composer-model-controls .ui-select {
+  min-width: 0;
+}
+
+.composer-model-controls .ui-select-trigger {
+  background: transparent;
+  color: var(--text-dim);
+  font-size: var(--font-size-sm);
+}
+
+.composer-model-controls .ui-select-trigger:hover,
+.composer-model-controls .ui-select.open .ui-select-trigger {
+  background: var(--overlay-hover);
+  color: var(--text-bright);
+}
+
+.composer-model-select {
+  max-width: 170px;
+}
+
+.composer-effort-select {
+  max-width: 88px;
+}
+
+.composer-model-controls.compact .composer-model-select {
+  max-width: 150px;
+}
+
+.composer-model-controls.compact .composer-effort-select {
+  max-width: 76px;
+}
+
+.composer-toolbar .ui-select-menu,
+.compact-composer-controls .ui-select-menu {
+  bottom: calc(100% + var(--space-2));
+  top: auto;
+}
+
+/* Compatibility layer while feature surfaces migrate to the primitives. */
+.sidebar-customize-menu,
+.account-menu,
+.task-actions-menu,
+.new-task-context-menu,
+.customize-scope-menu,
+.customize-view-options-menu,
+.customize-add-menu,
+.workspace-open-menu,
+.composer-tools-menu,
+.preview-menu-popover,
+.approval-dialog,
+.command-palette {
+  font-family: var(--font-ui);
+}
+
+.icon-button,
+.account-settings-button,
+.show-sidebar,
+.collapsed-search,
+.collapsed-new-agent,
+.workspace-dock-rail button,
+.settings-hide-sidebar,
+.settings-show-sidebar {
+  border-radius: var(--radius-control);
+  height: var(--icon-control-size);
+  width: var(--icon-control-size);
+}
+
+.button-primary,
+.button-secondary {
+  border-radius: var(--radius-control);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-ui);
+  height: var(--control-height-md);
+  padding: 0 var(--space-6);
+}
+
+.composer,
+.new-task-center > .composer,
+.thread-changes,
+.file-change-card,
+.plan-card,
+.catalog-card,
+.automation-card,
+.settings-section:not(.about-section) {
+  border-radius: var(--radius-panel);
+}
+
+.repository-list,
+.conversation-scroll,
+.thread-change-list,
+.settings-content,
+.workspace-open-options,
+.file-tree,
+.change-review-list,
+.change-review-diff,
+.terminal-output,
+.approval-dialog {
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+:where(
+  .repository-list,
+  .conversation-scroll,
+  .thread-change-list,
+  .settings-content,
+  .workspace-open-options,
+  .file-tree,
+  .change-review-list,
+  .change-review-diff,
+  .terminal-output,
+  .approval-dialog
+):hover {
+  scrollbar-color: color-mix(in srgb, var(--text-bright) 16%, transparent)
+    transparent;
+}

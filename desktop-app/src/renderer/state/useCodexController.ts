@@ -48,10 +48,88 @@ type ThreadResponse = {
   model?: string;
   initialTurnsPage?: TurnsPage | null;
 };
-type TurnResponse = { turn: Turn };
 
 const THREAD_PAGE_SIZE = 100;
 const MAX_THREAD_PAGES = 10;
+
+function isObject(value: unknown): value is JsonObject {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function requireThreadItem(value: unknown, source: string): ThreadItem {
+  if (
+    !isObject(value) ||
+    typeof value.id !== "string" ||
+    typeof value.type !== "string"
+  ) {
+    throw new TypeError(`${source} returned an invalid thread item`);
+  }
+  return value as unknown as ThreadItem;
+}
+
+function requireTurn(value: unknown, source: string): Turn {
+  if (
+    !isObject(value) ||
+    typeof value.id !== "string" ||
+    typeof value.status !== "string" ||
+    !Array.isArray(value.items)
+  ) {
+    throw new TypeError(`${source} returned an invalid turn`);
+  }
+  return {
+    ...(value as unknown as Turn),
+    items: value.items.map((item) => requireThreadItem(item, source)),
+  };
+}
+
+function requireThread(value: unknown, source: string): Thread {
+  if (
+    !isObject(value) ||
+    typeof value.id !== "string" ||
+    typeof value.cwd !== "string" ||
+    typeof value.preview !== "string" ||
+    !isObject(value.status) ||
+    typeof value.status.type !== "string" ||
+    !Array.isArray(value.turns)
+  ) {
+    throw new TypeError(`${source} returned an invalid thread`);
+  }
+  return {
+    ...(value as unknown as Thread),
+    turns: value.turns.map((turn) => requireTurn(turn, source)),
+  };
+}
+
+function requireCursor(value: unknown, source: string): string | null {
+  if (value === null || typeof value === "string") return value;
+  throw new TypeError(`${source} returned an invalid cursor`);
+}
+
+function requireTurnsPage(value: unknown, source: string): TurnsPage {
+  if (!isObject(value) || !Array.isArray(value.data)) {
+    throw new TypeError(`${source} returned an invalid turns page`);
+  }
+  return {
+    backwardsCursor: requireCursor(value.backwardsCursor ?? null, source),
+    data: value.data.map((turn) => requireTurn(turn, source)),
+    nextCursor: requireCursor(value.nextCursor ?? null, source),
+  };
+}
+
+function requireThreadResponse(value: unknown, source: string): ThreadResponse {
+  if (!isObject(value)) {
+    throw new TypeError(`${source} returned an invalid response`);
+  }
+  const initialTurnsPage =
+    value.initialTurnsPage === null || value.initialTurnsPage === undefined
+      ? value.initialTurnsPage
+      : requireTurnsPage(value.initialTurnsPage, source);
+  return {
+    ...(value as unknown as ThreadResponse),
+    initialTurnsPage,
+    thread: requireThread(value.thread, source),
+  };
+}
 
 async function listRecentThreads(
   initialCursor: string | null = null,
@@ -59,20 +137,23 @@ async function listRecentThreads(
   const threads: Thread[] = [];
   let cursor: string | null = initialCursor;
   for (let page = 0; page < MAX_THREAD_PAGES; page += 1) {
-    const response: ThreadListResponse =
-      await window.codexDesktop.request<ThreadListResponse>("thread/list", {
-        archived: false,
-        cursor,
-        limit: THREAD_PAGE_SIZE,
-        sortDirection: "desc",
-        sortKey: "updated_at",
-      });
-    for (const thread of response.data) {
+    const rawResponse = await window.codexDesktop.request("thread/list", {
+      archived: false,
+      cursor,
+      limit: THREAD_PAGE_SIZE,
+      sortDirection: "desc",
+      sortKey: "updated_at",
+    });
+    if (!isObject(rawResponse) || !Array.isArray(rawResponse.data)) {
+      throw new TypeError("thread/list returned an invalid thread page");
+    }
+    for (const value of rawResponse.data) {
+      const thread = requireThread(value, "thread/list");
       if (!threads.some((candidate) => candidate.id === thread.id)) {
         threads.push(thread);
       }
     }
-    cursor = response.nextCursor;
+    cursor = requireCursor(rawResponse.nextCursor ?? null, "thread/list");
     if (!cursor) break;
   }
   return { data: threads, nextCursor: cursor };
@@ -89,6 +170,7 @@ const DEFAULT_PREFERENCES: DesktopPreferences = {
   selectedModel: null,
   sidebarOpen: true,
   theme: "dark",
+  uiFontSize: 13,
 };
 
 function mergeItems(
@@ -152,10 +234,6 @@ function requestIdParam(
 
 function sameRequestId(left: number | string, right: number | string): boolean {
   return typeof left === typeof right && left === right;
-}
-
-function isObject(value: JsonValue | undefined): value is JsonObject {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function messageForError(error: unknown): string {
@@ -269,10 +347,14 @@ export function useCodexController() {
   }, []);
 
   const refreshThreads = useCallback(async () => {
-    const response = await listRecentThreads();
-    setThreads(response.data);
-    setThreadsNextCursor(response.nextCursor);
-  }, []);
+    try {
+      const response = await listRecentThreads();
+      setThreads(response.data);
+      setThreadsNextCursor(response.nextCursor);
+    } catch (error) {
+      addToast(`Could not refresh tasks: ${messageForError(error)}`, "danger");
+    }
+  }, [addToast]);
 
   const bootstrap = useCallback(async () => {
     if (bootstrapping.current) {
@@ -441,7 +523,13 @@ export function useCodexController() {
       }
 
       if (method === "turn/started" && threadId && isObject(params.turn)) {
-        const incoming = params.turn as unknown as Turn;
+        let incoming: Turn;
+        try {
+          incoming = requireTurn(params.turn, method);
+        } catch (error) {
+          addToast(messageForError(error), "danger");
+          return;
+        }
         setActiveThread((thread) =>
           thread?.id === threadId
             ? {
@@ -455,7 +543,13 @@ export function useCodexController() {
       }
 
       if (method === "turn/completed" && threadId && isObject(params.turn)) {
-        const incoming = params.turn as unknown as Turn;
+        let incoming: Turn;
+        try {
+          incoming = requireTurn(params.turn, method);
+        } catch (error) {
+          addToast(messageForError(error), "danger");
+          return;
+        }
         setActiveThread((thread) =>
           thread?.id === threadId
             ? {
@@ -475,7 +569,13 @@ export function useCodexController() {
         turnId &&
         isObject(params.item)
       ) {
-        const incoming = params.item as unknown as ThreadItem;
+        let incoming: ThreadItem;
+        try {
+          incoming = requireThreadItem(params.item, method);
+        } catch (error) {
+          addToast(messageForError(error), "danger");
+          return;
+        }
         setActiveThread((thread) =>
           thread?.id === threadId
             ? updateTurnItem(thread, turnId, (items) =>
@@ -771,30 +871,27 @@ export function useCodexController() {
       setPlan([]);
       setTurnsNextCursor(null);
       try {
-        let response: ThreadResponse;
+        let rawResponse: unknown;
+        let responseSource = "thread/resume";
         try {
-          response = await window.codexDesktop.request<ThreadResponse>(
-            "thread/resume",
-            {
-              excludeTurns: true,
-              initialTurnsPage: {
-                itemsView: "full",
-                limit: 30,
-                sortDirection: "desc",
-              },
-              threadId: thread.id,
+          rawResponse = await window.codexDesktop.request("thread/resume", {
+            excludeTurns: true,
+            initialTurnsPage: {
+              itemsView: "full",
+              limit: 30,
+              sortDirection: "desc",
             },
-          );
+            threadId: thread.id,
+          });
         } catch {
-          response = await window.codexDesktop.request<ThreadResponse>(
-            "thread/read",
-            {
-              includeTurns: true,
-              threadId: thread.id,
-            },
-          );
+          responseSource = "thread/read";
+          rawResponse = await window.codexDesktop.request("thread/read", {
+            includeTurns: true,
+            threadId: thread.id,
+          });
         }
         if (generation !== threadSelectionGeneration.current) return;
+        const response = requireThreadResponse(rawResponse, responseSource);
         const initialTurns = response.initialTurnsPage?.data
           ? [...response.initialTurnsPage.data].reverse()
           : response.thread.turns;
@@ -843,25 +940,62 @@ export function useCodexController() {
   }, [canChangeWorkspace, resetToNewTask]);
 
   const chooseWorkspace = useCallback(async () => {
-    const previousPreferences = preferencesRef.current;
-    const selected = await window.codexDesktop.chooseWorkspace();
-    if (selected) {
-      if (!canChangeWorkspace(selected)) {
-        const restored = await window.codexDesktop.setPreferences({
-          lastWorkspace: previousPreferences.lastWorkspace,
-          recentWorkspaces: previousPreferences.recentWorkspaces,
-        });
-        preferencesRef.current = restored;
-        setPreferencesState(restored);
-        return null;
+    try {
+      const previousPreferences = preferencesRef.current;
+      const selected = await window.codexDesktop.chooseWorkspace();
+      if (selected) {
+        if (!canChangeWorkspace(selected)) {
+          const restored = await window.codexDesktop.setPreferences({
+            lastWorkspace: previousPreferences.lastWorkspace,
+            recentWorkspaces: previousPreferences.recentWorkspaces,
+          });
+          preferencesRef.current = restored;
+          setPreferencesState(restored);
+          return null;
+        }
+        const next = await window.codexDesktop.getPreferences();
+        preferencesRef.current = next;
+        setPreferencesState(next);
+        resetToNewTask(selected);
       }
-      const next = await window.codexDesktop.getPreferences();
-      preferencesRef.current = next;
-      setPreferencesState(next);
-      resetToNewTask(selected);
+      return selected;
+    } catch (error) {
+      addToast(
+        `Could not open repository: ${messageForError(error)}`,
+        "danger",
+      );
+      return null;
     }
-    return selected;
-  }, [canChangeWorkspace, resetToNewTask]);
+  }, [addToast, canChangeWorkspace, resetToNewTask]);
+
+  const selectWorkspace = useCallback(
+    async (selected: string) => {
+      const previousPreferences = preferencesRef.current;
+      if (!canChangeWorkspace(selected)) return false;
+      try {
+        const next = await window.codexDesktop.setPreferences({
+          lastWorkspace: selected,
+          recentWorkspaces: [
+            selected,
+            ...previousPreferences.recentWorkspaces.filter(
+              (path) => path !== selected,
+            ),
+          ],
+        });
+        preferencesRef.current = next;
+        setPreferencesState(next);
+        resetToNewTask(selected);
+        return true;
+      } catch (error) {
+        addToast(
+          `Could not open repository: ${messageForError(error)}`,
+          "danger",
+        );
+        return false;
+      }
+    },
+    [addToast, canChangeWorkspace, resetToNewTask],
+  );
 
   const submitPrompt = useCallback(
     async (text: string, attachments: string[] = []) => {
@@ -883,19 +1017,18 @@ export function useCodexController() {
           if (!cwd) {
             return false;
           }
-          const started = await window.codexDesktop.request<ThreadResponse>(
-            "thread/start",
-            {
+          const started = requireThreadResponse(
+            await window.codexDesktop.request("thread/start", {
               approvalPolicy: preferences.approvalPolicy,
               cwd,
               model: preferences.selectedModel,
               sandbox: preferences.sandbox,
-            },
+            }),
+            "thread/start",
           );
           thread = started.thread;
           activeThreadRef.current = thread;
           setActiveThread(thread);
-          setView("thread");
           setThreads((current) => [
             thread as Thread,
             ...current.filter((item) => item.id !== thread?.id),
@@ -925,21 +1058,23 @@ export function useCodexController() {
             threadId: thread.id,
           });
         } else {
-          const response = await window.codexDesktop.request<TurnResponse>(
+          const response = await window.codexDesktop.request("turn/start", {
+            effort: preferences.selectedEffort,
+            input,
+            model: preferences.selectedModel,
+            threadId: thread.id,
+          });
+          const turn = requireTurn(
+            isObject(response) ? response.turn : undefined,
             "turn/start",
-            {
-              effort: preferences.selectedEffort,
-              input,
-              model: preferences.selectedModel,
-              threadId: thread.id,
-            },
           );
           setActiveThread((current) =>
             current?.id === thread?.id
-              ? { ...current, turns: mergeTurns(current.turns, response.turn) }
+              ? { ...current, turns: mergeTurns(current.turns, turn) }
               : current,
           );
         }
+        setView("thread");
         return true;
       } catch (error) {
         addToast(`Could not send prompt: ${messageForError(error)}`, "danger");
@@ -973,15 +1108,15 @@ export function useCodexController() {
     const generation = threadSelectionGeneration.current;
     setLoadingThread(true);
     try {
-      const response = await window.codexDesktop.request<TurnsPage>(
-        "thread/turns/list",
-        {
+      const response = requireTurnsPage(
+        await window.codexDesktop.request("thread/turns/list", {
           cursor: turnsNextCursor,
           itemsView: "full",
           limit: 30,
           sortDirection: "desc",
           threadId: thread.id,
-        },
+        }),
+        "thread/turns/list",
       );
       if (
         generation !== threadSelectionGeneration.current ||
@@ -1117,19 +1252,22 @@ export function useCodexController() {
       return;
     }
     try {
-      const response = await window.codexDesktop.request<
-        TurnResponse & { reviewThreadId: string }
-      >("review/start", {
+      const response = await window.codexDesktop.request("review/start", {
         delivery: "inline",
         target: { type: "uncommittedChanges" },
         threadId: thread.id,
       });
+      if (!isObject(response) || typeof response.reviewThreadId !== "string") {
+        throw new TypeError("review/start returned an invalid response");
+      }
+      const reviewThreadId = response.reviewThreadId;
+      const turn = requireTurn(response.turn, "review/start");
       setActiveThread((current) =>
-        current?.id === response.reviewThreadId
+        current?.id === reviewThreadId
           ? {
               ...current,
               status: { type: "active", activeFlags: [] },
-              turns: mergeTurns(current.turns, response.turn),
+              turns: mergeTurns(current.turns, turn),
             }
           : current,
       );
@@ -1176,6 +1314,7 @@ export function useCodexController() {
     requiresAuth,
     respondToServerRequest,
     runtime,
+    selectWorkspace,
     selectThread,
     serverRequests,
     setView,
