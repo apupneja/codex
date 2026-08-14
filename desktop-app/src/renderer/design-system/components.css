@@ -175,40 +175,149 @@
   align-items: center;
   display: flex;
   min-width: 0;
+  position: relative;
 }
 
-.composer-model-controls .ui-select {
-  min-width: 0;
-}
-
-.composer-model-controls .ui-select-trigger {
+.composer-model-trigger {
+  align-items: center;
   background: transparent;
+  border-radius: var(--radius-pill);
   color: var(--text-dim);
+  display: flex;
   font-size: var(--font-size-control);
+  gap: var(--space-2);
+  height: var(--control-height-sm);
+  min-width: 0;
+  padding: 0 var(--space-3);
+  text-align: left;
 }
 
-.composer-model-controls .ui-select-trigger:hover,
-.composer-model-controls .ui-select.open .ui-select-trigger {
+.composer-model-trigger:hover,
+.composer-model-trigger:focus-visible,
+.composer-model-controls:has(.composer-model-menu) .composer-model-trigger {
   background: var(--overlay-hover);
   color: var(--text-bright);
 }
 
-.composer-model-select {
-  max-width: 230px;
+.composer-model-trigger:disabled {
+  opacity: 0.5;
 }
 
-.composer-model-controls.compact .composer-model-select {
-  max-width: 190px;
+.composer-model-trigger-name,
+.composer-model-trigger-effort {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.composer-toolbar .ui-select-menu,
-.compact-composer-controls .ui-select-menu {
+.composer-model-trigger-name {
+  color: var(--text-bright);
+}
+
+.composer-model-trigger-effort {
+  color: var(--muted);
+}
+
+.composer-model-trigger > svg {
+  color: var(--muted);
+  flex: none;
+  transition: transform var(--transition-control);
+}
+
+.composer-model-controls:has(.composer-model-menu)
+  .composer-model-trigger
+  > svg {
+  transform: rotate(180deg);
+}
+
+.composer-model-menu {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  width: min(360px, calc(100vw - var(--space-12)));
+  z-index: 120;
+}
+
+.composer-model-menu[data-placement="above"] {
   bottom: calc(100% + var(--space-2));
   top: auto;
 }
 
+.composer-model-menu-row {
+  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+  min-height: calc(var(--control-height-lg) + var(--space-6));
+}
+
+.composer-model-menu-row > span {
+  color: var(--text-bright);
+  font-size: var(--font-size-body);
+  min-width: 0;
+}
+
+.composer-model-menu-row > strong {
+  color: var(--muted);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-ui);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.composer-model-menu-row > svg,
+.composer-model-reset > svg,
+.composer-model-menu-back > svg {
+  color: var(--muted);
+  flex: none;
+}
+
+.composer-model-menu-row.is-disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.composer-model-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
+}
+
+.composer-model-option > svg {
+  color: transparent;
+  justify-self: end;
+}
+
+.composer-model-option > svg.selected {
+  color: currentColor;
+}
+
+.composer-model-menu-back {
+  justify-content: flex-start;
+}
+
+.composer-model-menu-back .ui-menu-label {
+  padding: 0;
+}
+
+.composer-model-reset {
+  justify-content: space-between;
+}
+
+.composer-model-controls.compact .composer-model-menu {
+  right: 0;
+}
+
+.composer-model-controls.compact .composer-model-trigger {
+  max-width: 190px;
+}
+
 /* Compatibility layer while feature surfaces migrate to the primitives. */
 .sidebar-customize-menu,
+.repository-context-menu,
 .account-menu,
 .task-actions-menu,
 .new-task-context-menu,
@@ -250,7 +359,6 @@
 .new-task-center > .composer,
 .thread-changes,
 .file-change-card,
-.plan-card,
 .catalog-card,
 .automation-card,
 .settings-section:not(.about-section) {
@@ -419,4 +527,45 @@
   padding: var(--space-5);
   user-select: text;
   white-space: pre-wrap;
+}
+
+.authentication-notice {
+  align-items: center;
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  color: var(--text-dim);
+  display: grid;
+  font-size: var(--font-size-body);
+  gap: var(--space-3);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-inline: auto;
+  max-width: var(--chat-column-width);
+  padding: var(--space-3) var(--space-4);
+  width: 100%;
+}
+
+.authentication-notice > svg {
+  color: var(--text);
+}
+
+.authentication-notice > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.authentication-notice strong {
+  color: var(--text);
+  font-weight: var(--font-weight-medium);
+}
+
+.authentication-notice span {
+  font-size: var(--font-size-meta);
+}
+
+.authentication-notice button {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-2);
+  white-space: nowrap;
 }

@@ -1,0 +1,631 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`EnvironmentPanel > renders as a dismissible side drawer when the chat lane is compact 1`] = `
+<header
+  class="environment-panel-header"
+>
+  <h2>
+    Environment
+  </h2>
+  <div
+    class="environment-panel-header-actions"
+  >
+    <button
+      aria-expanded="false"
+      aria-haspopup="menu"
+      aria-label="Environment actions"
+      class="environment-panel-icon"
+      type="button"
+    >
+      <svg
+        class="lucide lucide-ellipsis"
+        fill="none"
+        height="16"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="16"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="1"
+        />
+        <circle
+          cx="19"
+          cy="12"
+          r="1"
+        />
+        <circle
+          cx="5"
+          cy="12"
+          r="1"
+        />
+      </svg>
+    </button>
+    <button
+      aria-label="Open terminal"
+      class="environment-panel-icon"
+      title="Open terminal"
+      type="button"
+    >
+      <svg
+        class="lucide lucide-play"
+        fill="none"
+        height="16"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="16"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <polygon
+          points="6 3 20 12 6 21 6 3"
+        />
+      </svg>
+    </button>
+    <button
+      aria-label="Close Environment"
+      class="environment-panel-icon"
+      type="button"
+    >
+      <svg
+        class="lucide lucide-x"
+        fill="none"
+        height="16"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="16"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M18 6 6 18"
+        />
+        <path
+          d="m6 6 12 12"
+        />
+      </svg>
+    </button>
+  </div>
+</header>
+`;
+
+exports[`EnvironmentPanel > renders live task data and routes every side-panel action 1`] = `
+<DocumentFragment>
+  <aside
+    aria-label="Environment"
+    class="environment-panel environment-panel-docked"
+    id="environment-panel"
+  >
+    <header
+      class="environment-panel-header"
+    >
+      <h2>
+        Environment
+      </h2>
+      <div
+        class="environment-panel-header-actions"
+      >
+        <button
+          aria-expanded="false"
+          aria-haspopup="menu"
+          aria-label="Environment actions"
+          class="environment-panel-icon"
+          type="button"
+        >
+          <svg
+            class="lucide lucide-ellipsis"
+            fill="none"
+            height="16"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="16"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="1"
+            />
+            <circle
+              cx="19"
+              cy="12"
+              r="1"
+            />
+            <circle
+              cx="5"
+              cy="12"
+              r="1"
+            />
+          </svg>
+        </button>
+        <button
+          aria-label="Open terminal"
+          class="environment-panel-icon"
+          title="Open terminal"
+          type="button"
+        >
+          <svg
+            class="lucide lucide-play"
+            fill="none"
+            height="16"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="16"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <polygon
+              points="6 3 20 12 6 21 6 3"
+            />
+          </svg>
+        </button>
+      </div>
+    </header>
+    <div
+      class="environment-panel-actions"
+    >
+      <button
+        class="environment-panel-row"
+      >
+        <svg
+          class="lucide lucide-square-plus"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect
+            height="18"
+            rx="2"
+            width="18"
+            x="3"
+            y="3"
+          />
+          <path
+            d="M8 12h8"
+          />
+          <path
+            d="M12 8v8"
+          />
+        </svg>
+        <span>
+          Changes
+        </span>
+        <span
+          class="environment-change-counts"
+        >
+          <b
+            class="addition"
+          >
+            +1
+          </b>
+          <b
+            class="deletion"
+          >
+            −1
+          </b>
+        </span>
+      </button>
+      <button
+        class="environment-panel-row"
+        title="/workspace"
+      >
+        <svg
+          class="lucide lucide-laptop"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"
+          />
+        </svg>
+        <span>
+          This Mac
+        </span>
+        <svg
+          class="lucide lucide-chevron-down"
+          fill="none"
+          height="15"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="15"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="m6 9 6 6 6-6"
+          />
+        </svg>
+      </button>
+      <button
+        class="environment-panel-row"
+        title="Copy feature/environment"
+      >
+        <svg
+          class="lucide lucide-git-branch"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <line
+            x1="6"
+            x2="6"
+            y1="3"
+            y2="15"
+          />
+          <circle
+            cx="18"
+            cy="6"
+            r="3"
+          />
+          <circle
+            cx="6"
+            cy="18"
+            r="3"
+          />
+          <path
+            d="M18 9a9 9 0 0 1-9 9"
+          />
+        </svg>
+        <span
+          class="environment-panel-row-label"
+        >
+          feature/environment
+        </span>
+        <svg
+          class="lucide lucide-chevron-down"
+          fill="none"
+          height="15"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="15"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="m6 9 6 6 6-6"
+          />
+        </svg>
+      </button>
+      <button
+        class="environment-panel-row"
+      >
+        <svg
+          class="lucide lucide-circle-dot"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+          />
+          <circle
+            cx="12"
+            cy="12"
+            r="1"
+          />
+        </svg>
+        <span>
+          Commit or push
+        </span>
+      </button>
+      <button
+        class="environment-panel-row"
+      >
+        <svg
+          class="lucide lucide-github"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"
+          />
+          <path
+            d="M9 18c-4.51 2-5-2-7-2"
+          />
+        </svg>
+        <span>
+          Create pull request
+        </span>
+      </button>
+    </div>
+    <section
+      class="environment-panel-section"
+    >
+      <h3>
+        Computer Use
+      </h3>
+      <button
+        class="environment-panel-row"
+      >
+        <svg
+          class="lucide lucide-monitor-up"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="m9 10 3-3 3 3"
+          />
+          <path
+            d="M12 13V7"
+          />
+          <rect
+            height="14"
+            rx="2"
+            width="20"
+            x="2"
+            y="3"
+          />
+          <path
+            d="M12 17v4"
+          />
+          <path
+            d="M8 21h8"
+          />
+        </svg>
+        <span>
+          Picture in Picture
+        </span>
+        <span
+          class="environment-panel-row-value"
+        >
+          Hide
+        </span>
+      </button>
+    </section>
+    <section
+      class="environment-panel-section environment-sources"
+    >
+      <div
+        class="environment-panel-section-header"
+      >
+        <h3>
+          Sources
+        </h3>
+        <button
+          aria-label="Add source"
+          class="environment-panel-icon"
+          title="Add sources from the composer"
+          type="button"
+        >
+          <svg
+            class="lucide lucide-plus"
+            fill="none"
+            height="17"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="17"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M5 12h14"
+            />
+            <path
+              d="M12 5v14"
+            />
+          </svg>
+        </button>
+      </div>
+      <div
+        class="environment-source-list"
+      >
+        <div
+          class="environment-source-row"
+          title="Architecture notes"
+        >
+          <span
+            class="environment-source-icon"
+          >
+            <svg
+              class="lucide lucide-panel-top"
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="14"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                height="18"
+                rx="2"
+                width="18"
+                x="3"
+                y="3"
+              />
+              <path
+                d="M3 9h18"
+              />
+            </svg>
+          </span>
+          <span>
+            Architecture notes
+          </span>
+        </div>
+        <button
+          class="environment-source-row"
+          title="/workspace/mockup.png"
+          type="button"
+        >
+          <span
+            class="environment-source-icon"
+          >
+            <svg
+              class="lucide lucide-image"
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="14"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                height="18"
+                rx="2"
+                ry="2"
+                width="18"
+                x="3"
+                y="3"
+              />
+              <circle
+                cx="9"
+                cy="9"
+                r="2"
+              />
+              <path
+                d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
+              />
+            </svg>
+          </span>
+          <span>
+            mockup.png
+          </span>
+        </button>
+        <button
+          class="environment-source-row"
+          title="/workspace/SKILL.md"
+          type="button"
+        >
+          <span
+            class="environment-source-icon"
+          >
+            <svg
+              class="lucide lucide-file-code2"
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="14"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"
+              />
+              <path
+                d="M14 2v4a2 2 0 0 0 2 2h4"
+              />
+              <path
+                d="m5 12-3 3 3 3"
+              />
+              <path
+                d="m9 18 3-3-3-3"
+              />
+            </svg>
+          </span>
+          <span>
+            UI guidance
+          </span>
+        </button>
+      </div>
+      <button
+        aria-expanded="false"
+        class="environment-sources-more"
+        type="button"
+      >
+        <svg
+          class="lucide lucide-git-branch"
+          fill="none"
+          height="14"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="14"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <line
+            x1="6"
+            x2="6"
+            y1="3"
+            y2="15"
+          />
+          <circle
+            cx="18"
+            cy="6"
+            r="3"
+          />
+          <circle
+            cx="6"
+            cy="18"
+            r="3"
+          />
+          <path
+            d="M18 9a9 9 0 0 1-9 9"
+          />
+        </svg>
+        View all (4)
+      </button>
+    </section>
+  </aside>
+</DocumentFragment>
+`;

@@ -11,14 +11,22 @@ python := if os_family() == "windows" { "python" } else { "python3" }
 help:
     just -l
 
+# Run Cargo with the repository's verified V8 artifacts.
+cargo-with-v8 *args:
+    {{ python }} ../scripts/cargo_with_v8.py {args}
+
+# Build from source with the repository's V8 artifacts.
+build *args:
+    just cargo-with-v8 build {args}
+
 # `codex`
 alias c := codex
 codex *args:
-    cargo run --bin codex -- {args}
+    just cargo-with-v8 run --bin codex -- {args}
 
 # `codex exec`
 exec *args:
-    cargo run --bin codex -- exec {args}
+    just cargo-with-v8 run --bin codex -- exec {args}
 
 # Start `codex exec-server` and run codex-tui.
 [no-cd]
@@ -33,11 +41,11 @@ file-search *args:
 
 # Run the standalone code-mode host from source.
 code-mode-host *args:
-    cargo run --bin codex-code-mode-host -- {args}
+    just cargo-with-v8 run --bin codex-code-mode-host -- {args}
 
 # Build the CLI and run the app-server test client
 app-server-test-client *args:
-    cargo build -p codex-cli
+    just cargo-with-v8 build -p codex-cli
     cargo run -p codex-app-server-test-client -- --codex-bin ./target/debug/codex {args}
 
 # Format the justfile, Rust, Bazel/Starlark, Python SDK code, and Python scripts.

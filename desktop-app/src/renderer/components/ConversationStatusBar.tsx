@@ -1,12 +1,14 @@
-import { ChevronDown, GitBranch, Laptop } from "lucide-react";
+import { ChevronDown, GitBranch, Laptop, LoaderCircle } from "lucide-react";
 
 type ConversationStatusBarProps = {
+  active: boolean;
   branchLabel: string;
   deviceLabel: string;
   tokenPercent: number;
 };
 
 export function ConversationStatusBar({
+  active,
   branchLabel,
   deviceLabel,
   tokenPercent,
@@ -24,14 +26,34 @@ export function ConversationStatusBar({
         <ChevronDown aria-hidden="true" size={12} />
       </button>
       <span
-        aria-label={`Context ${tokenPercent}%`}
-        className="context-ring"
-        style={{
-          background: `conic-gradient(var(--addition) ${tokenPercent}%, var(--border-strong) 0)`,
-        }}
-        title={`Context ${tokenPercent}%`}
+        aria-label={
+          active
+            ? `Agent working. Context ${tokenPercent}%`
+            : `Context ${tokenPercent}%`
+        }
+        className={`context-ring ${active ? "is-active" : ""}`}
+        style={
+          active
+            ? undefined
+            : {
+                background: `conic-gradient(var(--addition) ${tokenPercent}%, var(--border-strong) 0)`,
+              }
+        }
+        title={
+          active
+            ? `Agent working · Context ${tokenPercent}%`
+            : `Context ${tokenPercent}%`
+        }
       >
-        <i />
+        {active ? (
+          <LoaderCircle
+            aria-hidden="true"
+            className="context-ring-spinner"
+            size={14}
+          />
+        ) : (
+          <i />
+        )}
       </span>
     </div>
   );

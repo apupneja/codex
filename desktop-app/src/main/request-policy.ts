@@ -159,11 +159,22 @@ export class RendererRequestPolicy {
   async grantPersistedWorkspaces(
     ownerId: number,
     paths: Array<string | null>,
-  ): Promise<void> {
-    await Promise.allSettled(
+  ): Promise<Map<string, string>> {
+    const results = await Promise.all(
       paths
         .filter((path): path is string => typeof path === "string")
-        .map((path) => this.grantWorkspace(ownerId, path)),
+        .map(async (path) => {
+          try {
+            return [path, await this.grantWorkspace(ownerId, path)] as const;
+          } catch {
+            return null;
+          }
+        }),
+    );
+    return new Map(
+      results.filter(
+        (result): result is readonly [string, string] => result !== null,
+      ),
     );
   }
 

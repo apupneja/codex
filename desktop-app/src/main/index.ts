@@ -34,6 +34,7 @@ import type {
 } from "../shared/types";
 import { isAllowedPreviewUrl, validatePreviewUrl } from "../shared/preview-url";
 import { EmbeddedBrowserHost } from "./embedded-browser";
+import { confirmDiscardChanges } from "./native-dialogs";
 import { PreferencesStore } from "./preferences";
 import { RendererRequestPolicy } from "./request-policy";
 import { AppServerRpcClient } from "./rpc-client";
@@ -49,8 +50,10 @@ import {
   type TerminalOutputFailure,
 } from "./terminal-output";
 import { exerciseWorkspaceDock } from "./workspace-dock-smoke";
+import { withDesktopWorkspaceContext } from "./workspace-context";
 
 const APP_NAME = "Codex Desktop";
+const APP_ICON_PATH = join(__dirname, "..", "..", "resources", "icon.png");
 const RPC_METHODS = new Set([
   "account/login/cancel",
   "account/login/start",
@@ -590,7 +593,11 @@ function configureIpc(): void {
           resources.watchIds.delete(watchId);
         }
       }
-      const result = await rpc.request(method, params, timeout);
+      const result = await rpc.request(
+        method,
+        withDesktopWorkspaceContext(method, params),
+        timeout,
+      );
       await requestPolicy.grantResponseCapabilities(ownerId, method, result);
       return result;
     },
@@ -636,10 +643,28 @@ function configureIpc(): void {
   ipcMain.handle("preferences:get", async (event) => {
     assertTrustedSender(event);
     const saved = preferences.get();
-    await requestPolicy.grantPersistedWorkspaces(event.sender.id, [
-      saved.lastWorkspace,
-      ...saved.recentWorkspaces,
-    ]);
+    const persistedWorkspaces = await requestPolicy.grantPersistedWorkspaces(
+      event.sender.id,
+      [saved.lastWorkspace, ...saved.recentWorkspaces],
+    );
+    const recentWorkspaces = Array.from(
+      new Set(
+        saved.recentWorkspaces
+          .map((path) => persistedWorkspaces.get(path))
+          .filter((path): path is string => path !== undefined),
+      ),
+    );
+    const lastWorkspace = saved.lastWorkspace
+      ? (persistedWorkspaces.get(saved.lastWorkspace) ?? null)
+      : null;
+    const recentChanged =
+      recentWorkspaces.length !== saved.recentWorkspaces.length ||
+      recentWorkspaces.some(
+        (path, index) => path !== saved.recentWorkspaces[index],
+      );
+    if (lastWorkspace !== saved.lastWorkspace || recentChanged) {
+      return preferences.update({ lastWorkspace, recentWorkspaces });
+    }
     return saved;
   });
   ipcMain.handle("worktrees:list", async (event) => {
@@ -820,6 +845,20 @@ function configureIpc(): void {
     return selected;
   });
   ipcMain.handle(
+    "workspace:confirmDiscardChanges",
+    async (event, rawPath: unknown) => {
+      assertTrustedSender(event);
+      if (typeof rawPath !== "string" || !isAbsolute(rawPath)) {
+        throw new TypeError("Discard confirmation requires an absolute path");
+      }
+      await requestPolicy.assertDisclosedPath(event.sender.id, rawPath);
+      return confirmDiscardUnsavedChanges({
+        cancelLabel: "Cancel",
+        detail: normalize(rawPath),
+      });
+    },
+  );
+  ipcMain.handle(
     "workspace:setPanelVisibility",
     async (event, rawOptions: unknown) => {
       assertTrustedSender(event);
@@ -947,17 +986,20 @@ function configureIpc(): void {
   });
 }
 
-async function confirmDiscardUnsavedChanges(): Promise<boolean> {
-  if (!mainWindow) return true;
-  const result = await dialog.showMessageBox(mainWindow, {
-    buttons: ["Keep Editing", "Discard Changes"],
-    cancelId: 0,
-    defaultId: 0,
+async function confirmDiscardUnsavedChanges(
+  options: {
+    cancelLabel: string;
+    detail: string;
+  } = {
+    cancelLabel: "Keep Editing",
     detail: "Unsaved editor buffers will be lost.",
-    message: "Discard unsaved changes?",
-    type: "warning",
+  },
+): Promise<boolean> {
+  if (!mainWindow) return true;
+  return confirmDiscardChanges(dialog, mainWindow, {
+    ...options,
+    iconPath: APP_ICON_PATH,
   });
-  return result.response === 1;
 }
 
 function createMenu(): void {
@@ -1053,6 +1095,7 @@ async function createWindow(): Promise<void> {
     title: APP_NAME,
     titleBarStyle: isMac ? "hidden" : "default",
     ...(isMac ? { titleBarOverlay: true } : {}),
+    ...(!isMac && !app.isPackaged ? { icon: APP_ICON_PATH } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -1261,6 +1304,9 @@ if (!singleInstance) {
 }
 
 app.whenReady().then(async () => {
+  if (process.platform === "darwin" && !app.isPackaged) {
+    app.dock?.setIcon(APP_ICON_PATH);
+  }
   if (app.isPackaged) {
     app.setAsDefaultProtocolClient("codex");
   }

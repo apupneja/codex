@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Thread } from "../../shared/types";
 import { Sidebar } from "./Sidebar";
@@ -37,6 +37,9 @@ function renderSidebar(
   threads: Thread[],
   recentWorkspaces = ["/projects/signal-arena", "/projects/intusent-site"],
   onNewTaskInWorkspace = vi.fn(),
+  onSignIn = vi.fn(),
+  onArchive = vi.fn(),
+  onRemoveWorkspaces = vi.fn(),
 ) {
   return render(
     <Sidebar
@@ -44,24 +47,49 @@ function renderSidebar(
       activeThread={threads[0] ?? null}
       grouping="repository"
       hasMoreThreads={false}
-      onArchive={vi.fn()}
+      onArchive={onArchive}
       onChooseWorkspace={vi.fn()}
       onLoadMore={vi.fn()}
+      onLogout={vi.fn()}
       onNewTask={vi.fn()}
       onNewTaskInWorkspace={onNewTaskInWorkspace}
+      onRemoveWorkspaces={onRemoveWorkspaces}
       onSearch={vi.fn()}
       onSelectThread={vi.fn()}
       onSetGrouping={vi.fn()}
       onSetView={vi.fn()}
+      onSignIn={onSignIn}
       onToggle={vi.fn()}
       recentWorkspaces={recentWorkspaces}
       threads={threads}
       view="thread"
+      signingIn={false}
     />,
   );
 }
 
 describe("Sidebar repositories", () => {
+  beforeEach(() => {
+    try {
+      window.localStorage.removeItem("codex-hidden-workspaces");
+      window.localStorage.removeItem("codex-repository-read-at");
+    } catch {
+      // jsdom can run with opaque storage in isolated test workers.
+    }
+  });
+
+  it("starts ChatGPT sign in from the signed-out account menu", () => {
+    const onSignIn = vi.fn();
+    renderSidebar([], [], vi.fn(), onSignIn);
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sign in with ChatGPT" }),
+    );
+
+    expect(onSignIn).toHaveBeenCalledOnce();
+  });
+
   it("shows tasks grouped under repositories and keeps empty repositories visible", () => {
     renderSidebar([
       thread({ id: "thread-1" }),
@@ -149,6 +177,63 @@ describe("Sidebar repositories", () => {
     );
 
     expect(onNewTaskInWorkspace).toHaveBeenCalledWith("/projects/signal-arena");
+  });
+
+  it("offers repository actions from the right-click menu", () => {
+    const onArchive = vi.fn();
+    const onRemoveWorkspaces = vi.fn();
+    renderSidebar(
+      [
+        thread({ id: "thread-1" }),
+        thread({ id: "thread-2", name: "Project overview" }),
+      ],
+      ["/projects/signal-arena"],
+      vi.fn(),
+      vi.fn(),
+      onArchive,
+      onRemoveWorkspaces,
+    );
+
+    const repository = screen.getByRole("button", { name: "signal-arena" });
+    fireEvent.contextMenu(repository, { clientX: 40, clientY: 80 });
+
+    const menu = screen.getByRole("menu", {
+      name: "Actions for signal-arena",
+    });
+    expect(within(menu).getByText("Mark All as Read")).toBeVisible();
+    expect(within(menu).getByText("Archive All")).toBeVisible();
+    expect(within(menu).getByText("Remove from Sidebar")).toBeVisible();
+    expect(menu).toMatchSnapshot();
+
+    fireEvent.click(within(menu).getByRole("menuitem", { name: /Mark All/ }));
+    fireEvent.contextMenu(repository, { clientX: 40, clientY: 80 });
+    expect(screen.getByRole("menuitem", { name: /Mark All/ })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("menuitem", { name: /Archive All/ }));
+    expect(onArchive).toHaveBeenCalledTimes(2);
+
+    fireEvent.contextMenu(repository, { clientX: 40, clientY: 80 });
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: /Remove from Sidebar/ }),
+    );
+    expect(onRemoveWorkspaces).toHaveBeenCalledWith(["/projects/signal-arena"]);
+    expect(
+      screen.queryByRole("button", { name: "signal-arena" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens repository actions from the keyboard", () => {
+    renderSidebar([thread({})]);
+    const repository = screen.getByRole("button", { name: "signal-arena" });
+
+    fireEvent.keyDown(repository, { key: "F10", shiftKey: true });
+
+    expect(
+      screen.getByRole("menu", { name: "Actions for signal-arena" }),
+    ).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: /Mark All/ })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "ArrowDown" });
+    expect(screen.getByRole("menuitem", { name: /Archive All/ })).toHaveFocus();
   });
 
   it("does not expose internal transport text as a task title", () => {

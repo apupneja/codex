@@ -1,19 +1,15 @@
 import {
-  Archive,
   ArrowLeft,
   ArrowRight,
   BookOpen,
   Blocks,
   Bot,
   CircleHelp,
-  ChevronDown,
-  FolderOpen,
-  FolderPlus,
   Keyboard,
-  ListFilter,
+  LoaderCircle,
+  LogIn,
   LogOut,
   PanelLeft,
-  Plus,
   Search,
   Send,
   Settings,
@@ -21,25 +17,16 @@ import {
   Smartphone,
   UserRound,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { Account, Thread } from "../../shared/types";
 import referenceAvatarUrl from "../assets/reference-avatar.png";
-import {
-  MenuItem,
-  MenuLabel,
-  MenuSeparator,
-  MenuSurface,
-} from "../design-system";
+import { MenuItem, MenuSeparator, MenuSurface } from "../design-system";
 import type { AppView } from "../state/useCodexController";
 import { CodexMark } from "./CodexMark";
-import {
-  buildSidebarGroups,
-  filterSidebarGroups,
-  sidebarThreadTitle,
-  type SidebarGrouping,
-} from "./sidebar-repositories";
+import type { SidebarGrouping } from "./sidebar-repositories";
 import { SidebarRow } from "./SidebarRow";
+import { SidebarRepositories } from "./SidebarRepositories";
 
 export type { SidebarGrouping } from "./sidebar-repositories";
 
@@ -51,28 +38,21 @@ type SidebarProps = {
   onChooseWorkspace(): void;
   onNewTask(): void;
   onNewTaskInWorkspace(workspace: string): void;
+  onRemoveWorkspaces(workspaces: string[]): void;
   onLoadMore(): void;
+  onLogout(): void;
   onSearch(): void;
   onSelectThread(thread: Thread): void;
   onSetGrouping(grouping: SidebarGrouping): void;
   onSetView(view: AppView): void;
+  onSignIn(): void;
   onToggle(): void;
   recentWorkspaces: string[];
   threads: Thread[];
   view: AppView;
   grouping: SidebarGrouping;
+  signingIn: boolean;
 };
-
-function timeAgo(timestamp: number): string {
-  const seconds = Math.max(0, Math.floor(Date.now() / 1_000 - timestamp));
-  if (seconds < 60) return "now";
-  if (seconds < 3_600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86_400) return `${Math.floor(seconds / 3_600)}h`;
-  if (seconds < 604_800) return `${Math.floor(seconds / 86_400)}d`;
-  if (seconds < 2_629_800) return `${Math.floor(seconds / 604_800)}w`;
-  if (seconds < 31_557_600) return `${Math.floor(seconds / 2_629_800)}mo`;
-  return `${Math.floor(seconds / 31_557_600)}y`;
-}
 
 function accountLabel(account: Account | null): {
   primary: string;
@@ -101,30 +81,23 @@ export function Sidebar({
   onChooseWorkspace,
   onNewTask,
   onNewTaskInWorkspace,
+  onRemoveWorkspaces,
   onLoadMore,
+  onLogout,
   onSearch,
   onSelectThread,
   onSetGrouping,
   onSetView,
+  onSignIn,
   onToggle,
   recentWorkspaces,
   threads,
   view,
   grouping,
+  signingIn,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [onboardingVisible, setOnboardingVisible] = useState(true);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [sidebarCustomizeOpen, setSidebarCustomizeOpen] = useState(false);
-  const [repositoryFilter, setRepositoryFilter] = useState("");
-  const groups = useMemo(
-    () => buildSidebarGroups(grouping, recentWorkspaces, threads),
-    [grouping, recentWorkspaces, threads],
-  );
-  const filteredGroups = useMemo(
-    () => filterSidebarGroups(groups, repositoryFilter),
-    [groups, repositoryFilter],
-  );
   const identity = accountLabel(account);
   const referenceCapture =
     new URLSearchParams(window.location.search).get("reference") === "cursor";
@@ -193,192 +166,21 @@ export function Sidebar({
         />
       </nav>
 
-      <div
-        className="sidebar-section-header"
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
-            setSidebarCustomizeOpen(false);
-          }
-        }}
-      >
-        <span>Repositories</span>
-        <div>
-          <button
-            aria-expanded={sidebarCustomizeOpen}
-            aria-haspopup="menu"
-            aria-label="Filter and group repositories"
-            aria-pressed={Boolean(repositoryFilter.trim())}
-            className={`icon-button subtle ${repositoryFilter.trim() ? "active" : ""}`}
-            onClick={() => setSidebarCustomizeOpen((current) => !current)}
-          >
-            <ListFilter size={14} />
-          </button>
-          <button
-            aria-haspopup="dialog"
-            aria-label="Open Workspace"
-            className="icon-button subtle"
-            onClick={onChooseWorkspace}
-          >
-            <FolderPlus size={13} />
-          </button>
-          {sidebarCustomizeOpen ? (
-            <MenuSurface
-              aria-label="Sidebar filters"
-              className="sidebar-customize-menu"
-              role="menu"
-            >
-              <label className="sidebar-repository-filter">
-                <Search aria-hidden="true" size={13} />
-                <input
-                  aria-label="Filter repositories and tasks"
-                  autoFocus
-                  onChange={(event) => setRepositoryFilter(event.target.value)}
-                  placeholder="Filter repositories"
-                  type="search"
-                  value={repositoryFilter}
-                />
-              </label>
-              <MenuLabel>Group by</MenuLabel>
-              {(
-                [
-                  ["workspace", "Group by Workspace"],
-                  ["repository", "Group by Repository"],
-                  ["updated", "Group by Updated"],
-                  ["status", "Group by Status"],
-                  ["environment", "Group by Environment"],
-                ] as const
-              ).map(([value, label]) => (
-                <MenuItem
-                  aria-checked={grouping === value}
-                  key={value}
-                  role="menuitemradio"
-                  onClick={() => {
-                    onSetGrouping(value);
-                    setSidebarCustomizeOpen(false);
-                  }}
-                >
-                  {label}
-                </MenuItem>
-              ))}
-              <MenuLabel>Actions</MenuLabel>
-              <MenuItem
-                role="menuitem"
-                onClick={() => {
-                  setCollapsed(new Set(filteredGroups.map(([key]) => key)));
-                  setSidebarCustomizeOpen(false);
-                }}
-              >
-                Collapse All
-              </MenuItem>
-              <MenuItem
-                role="menuitem"
-                onClick={() => {
-                  setRepositoryFilter("");
-                  setSidebarCustomizeOpen(false);
-                }}
-              >
-                Clear Filter
-              </MenuItem>
-            </MenuSurface>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="repository-list">
-        {filteredGroups.map(([key, group]) => {
-          const isCollapsed = collapsed.has(key);
-          return (
-            <section className="repository-group" key={key}>
-              <div className="repository-heading-row">
-                <SidebarRow
-                  aria-expanded={!isCollapsed}
-                  icon={<FolderOpen size={14} />}
-                  label={group.label}
-                  onClick={() =>
-                    setCollapsed((current) => {
-                      const next = new Set(current);
-                      if (next.has(key)) next.delete(key);
-                      else next.add(key);
-                      return next;
-                    })
-                  }
-                  trailing={
-                    <ChevronDown
-                      className={isCollapsed ? "collapsed" : ""}
-                      size={13}
-                    />
-                  }
-                  title={group.label}
-                  variant="repository"
-                />
-                {group.workspace ? (
-                  <button
-                    aria-label={`New chat in ${group.label}`}
-                    className="repository-new-task"
-                    onClick={() => onNewTaskInWorkspace(group.workspace!)}
-                    title={`New chat in ${group.label}`}
-                  >
-                    <Plus aria-hidden="true" size={15} />
-                  </button>
-                ) : null}
-              </div>
-              {!isCollapsed ? (
-                <div className="thread-list">
-                  {group.threads.length === 0 ? (
-                    <div className="repository-empty">No agents yet</div>
-                  ) : null}
-                  {group.threads.map((thread) => (
-                    <div
-                      className={`thread-row ${activeThread?.id === thread.id && view === "thread" ? "active" : ""}`}
-                      key={thread.id}
-                    >
-                      <SidebarRow
-                        className="thread-main"
-                        label={
-                          <span className="thread-title">
-                            {sidebarThreadTitle(thread)}
-                          </span>
-                        }
-                        meta={
-                          <time>
-                            {timeAgo(thread.recencyAt ?? thread.updatedAt)}
-                          </time>
-                        }
-                        onClick={() => onSelectThread(thread)}
-                        variant="thread"
-                      />
-                      <button
-                        aria-label="Archive task"
-                        className="thread-archive"
-                        onClick={() => onArchive(thread)}
-                        title="Archive task"
-                      >
-                        <Archive size={13} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </section>
-          );
-        })}
-        {groups.length === 0 ? (
-          <button className="empty-repositories" onClick={onChooseWorkspace}>
-            <FolderPlus size={18} />
-            <span>Open a repository to begin</span>
-          </button>
-        ) : null}
-        {groups.length > 0 && filteredGroups.length === 0 ? (
-          <div className="repository-filter-empty">
-            No matching repositories or tasks
-          </div>
-        ) : null}
-        {hasMoreThreads ? (
-          <button className="load-more-threads" onClick={onLoadMore}>
-            Load older tasks
-          </button>
-        ) : null}
-      </div>
+      <SidebarRepositories
+        activeThread={activeThread}
+        grouping={grouping}
+        hasMoreThreads={hasMoreThreads}
+        onArchive={onArchive}
+        onChooseWorkspace={onChooseWorkspace}
+        onLoadMore={onLoadMore}
+        onNewTaskInWorkspace={onNewTaskInWorkspace}
+        onRemoveWorkspaces={onRemoveWorkspaces}
+        onSelectThread={onSelectThread}
+        onSetGrouping={onSetGrouping}
+        recentWorkspaces={recentWorkspaces}
+        threads={threads}
+        view={view}
+      />
 
       <div className="sidebar-footer">
         {onboardingVisible ? (
@@ -437,27 +239,51 @@ export function Sidebar({
           </button>
           {accountMenuOpen ? (
             <MenuSurface className="account-menu" role="menu">
-              {(
-                [
-                  ["Create Profile", UserRound],
-                  ["Get Cursor for iOS", Smartphone],
-                  ["Docs", BookOpen],
-                  ["Shortcuts", Keyboard],
-                  ["Contact Us", CircleHelp],
-                  ["Log Out", LogOut],
-                ] as const
-              ).map(([item, Icon], index) => (
-                <div key={item}>
-                  {index === 5 ? <MenuSeparator /> : null}
+              {!account ? (
+                <MenuItem
+                  onClick={() => {
+                    onSignIn();
+                    setAccountMenuOpen(false);
+                  }}
+                >
+                  {signingIn ? (
+                    <LoaderCircle className="spin" size={13} />
+                  ) : (
+                    <LogIn aria-hidden="true" size={13} />
+                  )}
+                  {signingIn ? "Open browser again" : "Sign in with ChatGPT"}
+                </MenuItem>
+              ) : (
+                <>
+                  {(
+                    [
+                      ["Create Profile", UserRound],
+                      ["Get Codex for iOS", Smartphone],
+                      ["Docs", BookOpen],
+                      ["Shortcuts", Keyboard],
+                      ["Contact Us", CircleHelp],
+                    ] as const
+                  ).map(([item, Icon]) => (
+                    <MenuItem
+                      key={item}
+                      onClick={() => setAccountMenuOpen(false)}
+                    >
+                      <Icon aria-hidden="true" size={13} />
+                      {item}
+                    </MenuItem>
+                  ))}
+                  <MenuSeparator />
                   <MenuItem
-                    role="menuitem"
-                    onClick={() => setAccountMenuOpen(false)}
+                    onClick={() => {
+                      onLogout();
+                      setAccountMenuOpen(false);
+                    }}
                   >
-                    <Icon aria-hidden="true" size={13} />
-                    {item}
+                    <LogOut aria-hidden="true" size={13} />
+                    Log out
                   </MenuItem>
-                </div>
-              ))}
+                </>
+              )}
             </MenuSurface>
           ) : null}
         </div>

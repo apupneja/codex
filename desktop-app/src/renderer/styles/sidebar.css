@@ -225,6 +225,12 @@
   text-transform: uppercase;
 }
 
+.repository-context-menu {
+  min-width: 220px;
+  position: fixed;
+  z-index: 160;
+}
+
 .sidebar-repository-filter {
   align-items: center;
   background: var(--overlay-subtle);

@@ -20,6 +20,35 @@
   padding-left: 14px;
 }
 
+.conversation-stage {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.conversation-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.conversation-view.environment-docked .conversation-stage {
+  column-gap: var(--space-6);
+  grid-template-columns:
+    minmax(0, 1fr)
+    clamp(320px, 28%, 360px);
+  padding-right: var(--space-6);
+}
+
+.conversation-view.environment-docked .conversation-main {
+  grid-column: 1;
+  grid-row: 1;
+}
+
 .chat-title:hover {
   color: var(--text-bright);
 }
@@ -68,17 +97,13 @@
   margin-bottom: 20px;
 }
 
-.conversation-content > .turn:first-of-type > .turn-meta {
+.conversation-content > .turn:first-of-type > .turn-activity {
   margin-bottom: 4px;
   padding-top: 6px;
 }
 
 .turn > .user-message-group {
   order: -2;
-}
-
-.turn > .turn-progress {
-  order: -1;
 }
 
 .turn > .user-message-group:not(:has(~ .user-message-group)) {
@@ -310,11 +335,6 @@
   transition: opacity var(--transition-control);
 }
 
-.turn > .message-actions {
-  margin-top: 0;
-  padding-right: 9px;
-}
-
 .agent-message:hover .message-actions {
   opacity: 1;
 }
@@ -521,8 +541,7 @@ button.activity-summary:hover {
   padding: 2px 0 2px;
 }
 
-.file-change-card,
-.plan-card {
+.file-change-card {
   background: color-mix(in srgb, var(--panel-soft) 84%, transparent);
   border: 1px solid var(--border);
   border-radius: var(--radius-menu);
@@ -594,60 +613,95 @@ button.activity-summary:hover {
   color: var(--deletion);
 }
 
-.plan-card {
-  display: grid;
-  gap: 3px;
-  padding: 9px 10px;
-}
-
-.plan-title {
-  align-items: center;
-  color: var(--text);
-  display: flex;
-  font-size: var(--font-size-meta);
-  gap: 6px;
-  margin-bottom: 3px;
-}
-
-.plan-step {
-  align-items: center;
+.turn-activity {
   color: var(--muted);
-  display: grid;
-  font-size: var(--font-size-caption);
-  gap: 7px;
-  grid-template-columns: 14px 1fr;
-  min-height: 22px;
+  margin-bottom: 3px;
+  min-width: 0;
 }
 
-.plan-completed {
+.turn-activity-header {
+  align-items: center;
+  display: flex;
+  min-width: 0;
+}
+
+.turn-activity-header > .turn-activity-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.turn-activity-header > .message-actions {
+  flex: 0 0 auto;
+  margin: 0;
+  padding-right: 9px;
+}
+
+.turn-activity-summary {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  display: flex;
+  font-size: var(--font-size-body);
+  gap: var(--space-3);
+  min-height: 30px;
+  padding: 5px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+button.turn-activity-summary:hover {
   color: var(--text-dim);
 }
 
-.plan-inProgress {
-  color: var(--text);
+.turn-activity-summary > svg {
+  margin-left: auto;
+  transition: transform var(--transition-control);
 }
 
-.turn-meta {
-  color: var(--muted);
-  font-size: var(--font-size-body);
-  min-height: 14px;
-  margin-bottom: 3px;
-  padding: 5px 10px 0;
+.turn-activity-summary > svg.expanded {
+  transform: rotate(180deg);
 }
 
-.turn-meta span,
-.turn-meta button {
-  align-items: center;
-  display: flex;
-  gap: 5px;
+.turn-status-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.turn-progress {
-  font-size: var(--font-size-prose);
+.turn-activity.is-active .turn-status-label {
+  animation: shimmer 1.8s linear infinite;
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--text-dim) 45%,
+    var(--muted) 75%
+  );
+  background-clip: text;
+  background-size: 200% 100%;
+  color: transparent;
 }
 
-.turn-working {
-  color: var(--muted);
+.turn-live-duration {
+  flex: 0 0 auto;
+  font-size: var(--font-size-meta);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.turn-activity-detail {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 10px;
+  padding: var(--space-4) 0 var(--space-2);
+}
+
+.turn-failed {
+  color: var(--danger-text);
 }
 
 .conversation-loading {
@@ -693,6 +747,117 @@ button.activity-summary:hover {
 
 .conversation-view:has(.prompt-queue) .conversation-content {
   padding-bottom: 330px;
+}
+
+.conversation-view:has(.active-turn-progress) .conversation-content {
+  padding-bottom: 220px;
+}
+
+.conversation-view:has(.prompt-queue):has(.active-turn-progress)
+  .conversation-content {
+  padding-bottom: 380px;
+}
+
+.active-turn-progress {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto var(--space-3);
+  max-width: var(--conversation-column-width);
+  position: relative;
+  width: 100%;
+}
+
+.active-turn-progress-trigger {
+  align-items: center;
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-dim);
+  display: flex;
+  font-size: var(--font-size-body);
+  gap: var(--space-2);
+  max-width: calc(100% - var(--space-8));
+  min-height: var(--control-height-lg);
+  min-width: 0;
+  padding: 0 var(--space-5);
+}
+
+.active-turn-progress-trigger:hover,
+.active-turn-progress-trigger[aria-expanded="true"] {
+  background: var(--surface-hover);
+  color: var(--text-bright);
+}
+
+.active-turn-progress-spinner {
+  color: var(--info-text);
+  flex: none;
+}
+
+.active-turn-progress-label,
+.active-turn-progress-files {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-turn-progress-label {
+  flex: none;
+}
+
+.active-turn-progress-files {
+  min-width: 0;
+}
+
+.active-turn-progress-divider {
+  color: var(--muted);
+}
+
+.active-turn-progress-trigger b {
+  flex: none;
+  font-weight: var(--font-weight-medium);
+}
+
+.active-turn-progress-popover {
+  animation: backdropIn var(--motion-overlay) both;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  max-height: min(360px, 50vh);
+  overflow-y: auto;
+  position: absolute;
+  transform: translateX(-50%);
+  width: min(440px, calc(100% - var(--space-8)));
+  z-index: var(--z-sticky-content);
+}
+
+.active-turn-progress-steps {
+  display: grid;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+}
+
+.active-turn-progress-step {
+  align-items: start;
+  color: var(--text-dim);
+  display: grid;
+  font-size: var(--font-size-body);
+  gap: var(--space-3);
+  grid-template-columns: 16px minmax(0, 1fr);
+  line-height: var(--line-height-prose);
+  padding: var(--space-2) var(--space-3);
+}
+
+.active-turn-progress-step > svg {
+  margin-top: 2px;
+}
+
+.active-turn-progress-step.is-completed {
+  color: var(--muted);
+}
+
+.active-turn-progress-step.is-inProgress {
+  color: var(--text-bright);
 }
 
 .prompt-queue {
@@ -874,6 +1039,7 @@ button.activity-summary:hover {
   display: flex;
   gap: 4px;
   margin-bottom: 6px;
+  position: relative;
 }
 
 .change-actions button {
@@ -890,9 +1056,37 @@ button.activity-summary:hover {
 }
 
 .change-actions .scroll-to-latest {
+  bottom: calc(100% + var(--space-3));
   border-radius: 50%;
+  height: var(--control-height-lg);
+  justify-content: center;
+  left: 50%;
   padding: 0;
-  width: 25px;
+  position: absolute;
+  transform: translateX(-50%);
+  width: var(--control-height-lg);
+}
+
+.scroll-working-dots {
+  align-items: center;
+  display: inline-flex;
+  gap: 2px;
+}
+
+.scroll-working-dots > span {
+  animation: loadingDot 1.2s ease-in-out infinite;
+  background: currentcolor;
+  border-radius: 50%;
+  height: 4px;
+  width: 4px;
+}
+
+.scroll-working-dots > span:nth-child(2) {
+  animation-delay: var(--duration-control);
+}
+
+.scroll-working-dots > span:nth-child(3) {
+  animation-delay: calc(var(--duration-control) * 2);
 }
 
 .conversation-statusbar {
@@ -949,4 +1143,10 @@ button.activity-summary:hover {
   border-radius: 50%;
   inset: 2px;
   position: absolute;
+}
+
+.context-ring-spinner {
+  animation: spin 1s linear infinite;
+  color: var(--muted);
+  display: block;
 }

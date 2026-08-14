@@ -161,6 +161,7 @@ export type DesktopAppAction =
 export type DesktopApi = {
   chooseFiles(): Promise<string[]>;
   chooseWorkspace(): Promise<string | null>;
+  confirmDiscardChanges(path: string): Promise<boolean>;
   ensureEmbeddedBrowser(initialUrl?: string): Promise<EmbeddedBrowserState>;
   getPreferences(): Promise<DesktopPreferences>;
   listManagedWorktrees(): Promise<ManagedWorktree[]>;

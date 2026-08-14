@@ -47,6 +47,7 @@ describe("model context request policy", () => {
     ["thread/start", "developerInstructions"],
     ["thread/resume", "history"],
     ["thread/resume", "path"],
+    ["turn/start", "additionalContext"],
     ["turn/start", "outputSchema"],
   ])("rejects %s model-context override %s", (method, field) => {
     const base: Record<string, JsonObject> = {
