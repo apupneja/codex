@@ -11,6 +11,7 @@ import "./styles/headers.css";
 import "./styles/new-task.css";
 import "./styles/composer.css";
 import "./styles/conversation.css";
+import "./styles/environment-panel.css";
 import "./styles/workspace.css";
 import "./styles/editor.css";
 import "./styles/utility.css";

@@ -13,21 +13,20 @@ Requirements:
 Build the development binary:
 
 ```bash
-cd codex-rs
-cargo build --bin redapto
+just build --bin redapto
 ```
 
 Run the interactive terminal interface:
 
 ```bash
 export REDAPTO_API_KEY="your-provider-key"
-./target/debug/redapto
+./codex-rs/target/debug/redapto
 ```
 
 Run a non-interactive task:
 
 ```bash
-./target/debug/redapto exec "explain this codebase"
+./codex-rs/target/debug/redapto exec "explain this codebase"
 ```
 
 Redapto stores user configuration and local state in `~/.redapto` by default. Set

@@ -12,7 +12,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { ClipboardEvent } from "react";
+import type { ClipboardEvent, RefObject } from "react";
 
 import type {
   ComposerContextBlock,
@@ -20,7 +20,12 @@ import type {
   Model,
   PromptSubmission,
 } from "../../shared/types";
-import { MenuItem, MenuSurface } from "../design-system";
+import {
+  MenuItem,
+  MenuSeparator,
+  MenuSurface,
+  usePopoverPlacement,
+} from "../design-system";
 import { contextTitle, isLongContext } from "../lib/promptContext";
 import { ComposerModelControls } from "./ComposerModelControls";
 import { ComposerContextCard } from "./ContextBlock";
@@ -73,13 +78,21 @@ type ComposerToolsMenuProps = {
   onClose(): void;
   onFile(): void;
   onToast(message: string): void;
+  triggerRef: RefObject<HTMLButtonElement | null>;
 };
 
 function ComposerToolsMenu({
   onClose,
   onFile,
   onToast,
+  triggerRef,
 }: ComposerToolsMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const placement = usePopoverPlacement({
+    open: true,
+    popoverRef: menuRef,
+    triggerRef,
+  });
   const chooseMode = (mode: string) => {
     onToast(`${mode} mode selected for the next task.`);
     onClose();
@@ -88,6 +101,9 @@ function ComposerToolsMenu({
     <MenuSurface
       aria-label="Add agents, context, tools"
       className="composer-tools-menu"
+      data-placement={placement}
+      role="menu"
+      ref={menuRef}
     >
       <div className="composer-tools-search">
         <input
@@ -95,46 +111,42 @@ function ComposerToolsMenu({
           placeholder="Search skills, context, chats..."
         />
       </div>
-      <div
-        aria-label="Add agents, context, tools"
-        className="composer-tools-menu-list"
-        role="listbox"
-      >
-        <MenuItem onClick={() => chooseMode("Plan")} role="option">
+      <div className="composer-tools-menu-list">
+        <MenuItem onClick={() => chooseMode("Plan")}>
           <ListTodo aria-hidden="true" size={12} />
           <span>
             Plan <small>Generate an implementation plan</small>
           </span>
         </MenuItem>
-        <MenuItem onClick={() => chooseMode("Debug")} role="option">
+        <MenuItem onClick={() => chooseMode("Debug")}>
           <Bug aria-hidden="true" size={12} />
           <span>
             Debug <small>Pinpoint the root cause of an issue</small>
           </span>
         </MenuItem>
-        <MenuItem onClick={() => chooseMode("Multitask")} role="option">
+        <MenuItem onClick={() => chooseMode("Multitask")}>
           <Workflow aria-hidden="true" size={12} />
           <span>
             Multitask <small>Orchestrate multiple subagents in parallel</small>
           </span>
         </MenuItem>
-        <MenuItem onClick={() => chooseMode("Ask")} role="option">
+        <MenuItem onClick={() => chooseMode("Ask")}>
           <CircleHelp aria-hidden="true" size={12} />
           <span>
             Ask <small>Answer questions without making edits</small>
           </span>
         </MenuItem>
+        <MenuSeparator />
         <MenuItem
           onClick={() => {
             onFile();
             onClose();
           }}
-          role="option"
         >
           <Paperclip aria-hidden="true" size={12} />
           <span>File</span>
         </MenuItem>
-        <MenuItem onClick={() => chooseMode("MCP")} role="option">
+        <MenuItem onClick={() => chooseMode("MCP")}>
           <Plug aria-hidden="true" size={12} />
           <span>MCP</span>
           <ChevronRight
@@ -170,6 +182,8 @@ export function Composer({
   >([]);
   const [listening, setListening] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const toolsTriggerRef = useRef<HTMLButtonElement>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
   const nextContextId = useRef(0);
   const lastRestoreRequest = useRef<string | null>(null);
@@ -403,7 +417,11 @@ export function Composer({
             aria-haspopup="menu"
             className="compact-add-button"
             aria-expanded={toolsOpen}
-            onClick={() => setToolsOpen((value) => !value)}
+            onClick={() => {
+              setToolsOpen((value) => !value);
+              setModelMenuOpen(false);
+            }}
+            ref={toolsTriggerRef}
             title="Attach files"
           >
             <Plus size={18} />
@@ -413,6 +431,7 @@ export function Composer({
               onClose={() => setToolsOpen(false)}
               onFile={() => void chooseAttachments()}
               onToast={onToast}
+              triggerRef={toolsTriggerRef}
             />
           ) : null}
           <textarea
@@ -441,6 +460,11 @@ export function Composer({
               compact
               disabled={active}
               models={models}
+              onOpenChange={(open) => {
+                setModelMenuOpen(open);
+                if (open) setToolsOpen(false);
+              }}
+              open={modelMenuOpen}
               preferences={preferences}
               updatePreferences={updatePreferences}
             />
@@ -555,7 +579,11 @@ export function Composer({
             aria-haspopup="menu"
             className="composer-add-button"
             aria-expanded={toolsOpen}
-            onClick={() => setToolsOpen((value) => !value)}
+            onClick={() => {
+              setToolsOpen((value) => !value);
+              setModelMenuOpen(false);
+            }}
+            ref={toolsTriggerRef}
             title="Attach files"
           >
             <Plus size={16} />
@@ -565,11 +593,17 @@ export function Composer({
               onClose={() => setToolsOpen(false)}
               onFile={() => void chooseAttachments()}
               onToast={onToast}
+              triggerRef={toolsTriggerRef}
             />
           ) : null}
           <ComposerModelControls
             disabled={active}
             models={models}
+            onOpenChange={(open) => {
+              setModelMenuOpen(open);
+              if (open) setToolsOpen(false);
+            }}
+            open={modelMenuOpen}
             preferences={preferences}
             updatePreferences={updatePreferences}
           />

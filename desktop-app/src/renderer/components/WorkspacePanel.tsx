@@ -39,6 +39,7 @@ import { ChangeReviewPanel } from "./ChangeReviewPanel";
 import { EmbeddedBrowser } from "./EmbeddedBrowser";
 import type { WorkspaceOpenTarget } from "./WorkspaceOpenMenu";
 import { WorkspaceTabs, type WorkspaceTab } from "./WorkspaceTabs";
+import { confirmDocumentClose } from "./workspace-document-close";
 
 const CodeEditor = lazy(() =>
   import("./CodeEditor").then((module) => ({ default: module.CodeEditor })),
@@ -701,13 +702,9 @@ export function WorkspacePanel({
     if (tab === closingTab) setTab(fallback);
   }
 
-  function closeDocument(document: OpenDocument): void {
-    if (
-      document.dirty &&
-      !window.confirm(`Discard unsaved changes to ${document.path}?`)
-    ) {
+  async function closeDocument(document: OpenDocument): Promise<void> {
+    if (!(await confirmDocumentClose(document, window.codexDesktop, addToast)))
       return;
-    }
     setDocuments((current) => {
       const next = current.filter((item) => item.path !== document.path);
       if (activePath === document.path) {

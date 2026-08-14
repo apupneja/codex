@@ -38,14 +38,7 @@
 .hero-mark {
   align-items: center;
   animation: heroIn var(--motion-hero) both;
-  background: linear-gradient(
-    145deg,
-    var(--overlay-hover),
-    var(--overlay-faint)
-  );
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-hero);
+  color: var(--text-bright);
   display: flex;
   height: 58px;
   justify-content: center;
@@ -263,6 +256,25 @@
 .device-context-menu {
   left: 0;
   min-width: 180px;
+}
+
+.device-context-menu .ui-menu-label {
+  padding: var(--space-3) var(--space-4) var(--space-2);
+}
+
+.device-context-menu .ui-menu-item {
+  gap: var(--space-4);
+  font-size: var(--font-size-body);
+  min-height: var(--control-height-md);
+  padding: var(--space-2) var(--space-4);
+}
+
+.device-context-menu .ui-menu-separator {
+  margin: var(--space-2) 0;
+}
+
+.device-context-menu .context-menu-new-worktree {
+  margin: 0;
 }
 
 .new-task-center > .composer {

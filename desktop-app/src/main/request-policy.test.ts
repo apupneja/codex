@@ -192,4 +192,19 @@ describe("RendererRequestPolicy", () => {
       policy.authorizeRequest(19, "fs/readDirectory", { path: workspace }),
     ).rejects.toThrow("outside the renderer's authorized workspaces");
   });
+
+  it("returns only existing persisted workspaces", async () => {
+    const workspace = await temporaryDirectory();
+    const missing = join(workspace, "missing");
+    const policy = new RendererRequestPolicy();
+
+    const persisted = await policy.grantPersistedWorkspaces(21, [
+      workspace,
+      missing,
+    ]);
+
+    expect(persisted).toEqual(
+      new Map([[workspace, await realpath(workspace)]]),
+    );
+  });
 });

@@ -128,6 +128,26 @@ export default function App() {
     () => new URLSearchParams(window.location.search).has("preview"),
     [],
   );
+  const removeWorkspacesFromSidebar = useCallback(
+    (workspaces: string[]) => {
+      const removed = new Set(workspaces);
+      const recentWorkspaces = preferences.recentWorkspaces.filter(
+        (workspace) => !removed.has(workspace),
+      );
+      void updatePreferences({
+        lastWorkspace:
+          preferences.lastWorkspace && removed.has(preferences.lastWorkspace)
+            ? (recentWorkspaces[0] ?? null)
+            : preferences.lastWorkspace,
+        recentWorkspaces,
+      });
+    },
+    [
+      preferences.lastWorkspace,
+      preferences.recentWorkspaces,
+      updatePreferences,
+    ],
+  );
   const referenceCapture = useMemo(
     () =>
       new URLSearchParams(window.location.search).get("reference") === "cursor",
@@ -423,17 +443,30 @@ export default function App() {
           onNewTaskInWorkspace={(workspace) =>
             void controller.selectWorkspace(workspace)
           }
+          onRemoveWorkspaces={removeWorkspacesFromSidebar}
           onLoadMore={() => void controller.loadMoreThreads()}
+          onLogout={() =>
+            void window.codexDesktop
+              .request("account/logout")
+              .catch((error: unknown) =>
+                controller.addToast(
+                  error instanceof Error ? error.message : String(error),
+                  "danger",
+                ),
+              )
+          }
           onSearch={() => setPaletteOpen(true)}
           onSelectThread={controller.selectThread}
           onSetGrouping={setSidebarGrouping}
           onSetView={controller.setView}
+          onSignIn={() => void controller.startLogin()}
           onToggle={toggleSidebar}
           recentWorkspaces={controller.preferences.recentWorkspaces}
           threads={controller.threads}
           hasMoreThreads={Boolean(controller.threadsNextCursor)}
           view={controller.view}
           grouping={sidebarGrouping}
+          signingIn={controller.authLoginPending}
         />
       ) : controller.view !== "settings" ? (
         <div className="collapsed-navigation">
@@ -473,11 +506,13 @@ export default function App() {
           <ConversationView
             changesOpen={workspaceVisible && activeWorkspaceTab === "changes"}
             controller={controller}
+            narrowLayout={narrowLayout}
             onOpenChange={openChangedFile}
             onOpenFile={openFile}
             onOpenTerminal={openTerminal}
             onShowChanges={showChanges}
             onToggleWorkspace={toggleWorkspace}
+            workspaceVisible={workspaceVisible}
           />
         ) : controller.view === "automations" ? (
           <AutomationsView controller={controller} />
@@ -536,20 +571,33 @@ export default function App() {
               onArchive={(thread) => void controller.archiveThread(thread)}
               onChooseWorkspace={() => void controller.chooseWorkspace()}
               onLoadMore={() => void controller.loadMoreThreads()}
+              onLogout={() =>
+                void window.codexDesktop
+                  .request("account/logout")
+                  .catch((error: unknown) =>
+                    controller.addToast(
+                      error instanceof Error ? error.message : String(error),
+                      "danger",
+                    ),
+                  )
+              }
               onNewTask={controller.newTask}
               onNewTaskInWorkspace={(workspace) =>
                 void controller.selectWorkspace(workspace)
               }
+              onRemoveWorkspaces={removeWorkspacesFromSidebar}
               onSearch={() => setPaletteOpen(true)}
               onSelectThread={controller.selectThread}
               onSetGrouping={setSidebarGrouping}
               onSetView={controller.setView}
+              onSignIn={() => void controller.startLogin()}
               onToggle={toggleSidebar}
               recentWorkspaces={controller.preferences.recentWorkspaces}
               threads={controller.threads}
               hasMoreThreads={Boolean(controller.threadsNextCursor)}
               view={controller.view}
               grouping={sidebarGrouping}
+              signingIn={controller.authLoginPending}
             />
           </div>
         </>

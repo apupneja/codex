@@ -41,6 +41,19 @@ function controller(overrides: Partial<CodexController> = {}) {
 }
 
 describe("NewTaskView", () => {
+  it("shows the Codex mark on the new-task screen", () => {
+    const { container } = render(
+      <NewTaskView controller={controller()} onToggleWorkspace={vi.fn()} />,
+    );
+
+    const mark = container.querySelector(".hero-mark .codex-mark");
+
+    expect(mark).toHaveAttribute("height", "48");
+    expect(mark).toHaveAttribute("viewBox", "0 0 1024 1024");
+    expect(mark).toHaveAttribute("width", "48");
+    expect(mark).toMatchSnapshot();
+  });
+
   it("opens a recent directory in the app", () => {
     const selectWorkspace = vi.fn();
 

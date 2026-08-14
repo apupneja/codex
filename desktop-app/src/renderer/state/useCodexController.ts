@@ -15,6 +15,15 @@ import type {
   Turn,
 } from "../../shared/types";
 import { composePromptText } from "../lib/promptContext";
+import {
+  applyTurnStreamDelta,
+  createOptimisticTurn,
+  failOptimisticTurn,
+  isTurnStreamDeltaMethod,
+  mergeItems,
+  mergeTurns,
+  updateTurnItem,
+} from "./threadStream";
 import { usePromptQueue } from "./usePromptQueue";
 
 export type AppView =
@@ -40,6 +49,11 @@ type ModelListResponse = { data: Model[]; nextCursor: string | null };
 type AccountReadResponse = {
   account: Account | null;
   requiresOpenaiAuth: boolean;
+};
+type AccountLoginStartResponse = {
+  authUrl: string;
+  loginId: string;
+  type: "chatgpt";
 };
 type TurnsPage = {
   data: Turn[];
@@ -182,53 +196,6 @@ const DEFAULT_PREFERENCES: DesktopPreferences = {
   uiFontSize: 13,
 };
 
-function mergeItems(
-  current: ThreadItem[],
-  incoming: ThreadItem[],
-): ThreadItem[] {
-  const merged = [...current];
-  for (const item of incoming) {
-    const index = merged.findIndex((candidate) => candidate.id === item.id);
-    if (index >= 0) {
-      merged[index] = item;
-    } else {
-      merged.push(item);
-    }
-  }
-  return merged;
-}
-
-function mergeTurns(current: Turn[], incoming: Turn): Turn[] {
-  const index = current.findIndex((turn) => turn.id === incoming.id);
-  if (index < 0) {
-    return [...current, incoming];
-  }
-  const existing = current[index];
-  if (!existing) {
-    return current;
-  }
-  const merged = [...current];
-  merged[index] = {
-    ...existing,
-    ...incoming,
-    items: mergeItems(existing.items, incoming.items),
-  };
-  return merged;
-}
-
-function updateTurnItem(
-  thread: Thread,
-  turnId: string,
-  updater: (items: ThreadItem[]) => ThreadItem[],
-): Thread {
-  return {
-    ...thread,
-    turns: thread.turns.map((turn) =>
-      turn.id === turnId ? { ...turn, items: updater(turn.items) } : turn,
-    ),
-  };
-}
-
 function stringParam(params: JsonObject, key: string): string | null {
   return typeof params[key] === "string" ? params[key] : null;
 }
@@ -283,6 +250,10 @@ export function useCodexController() {
   const [models, setModels] = useState<Model[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [requiresAuth, setRequiresAuth] = useState(false);
+  const [authLoginPending, setAuthLoginPending] = useState(false);
+  const [itemProgress, setItemProgress] = useState<Record<string, string[]>>(
+    {},
+  );
   const [activeThread, setActiveThread] = useState<Thread | null>(null);
   const [view, setView] = useState<AppView>("new");
   const [diff, setDiff] = useState("");
@@ -304,6 +275,9 @@ export function useCodexController() {
   } = usePromptQueue();
   const bootstrapping = useRef(false);
   const activeThreadRef = useRef<Thread | null>(null);
+  const accountRef = useRef<Account | null>(null);
+  const authLoginUrlRef = useRef<string | null>(null);
+  const requiresAuthRef = useRef(false);
   const preferencesRef = useRef(preferences);
   const workspaceContextRef = useRef<string | null>(preferences.lastWorkspace);
   const threadSelectionGeneration = useRef(0);
@@ -325,6 +299,14 @@ export function useCodexController() {
   useEffect(() => {
     preferencesRef.current = preferences;
   }, [preferences]);
+
+  useEffect(() => {
+    accountRef.current = account;
+  }, [account]);
+
+  useEffect(() => {
+    requiresAuthRef.current = requiresAuth;
+  }, [requiresAuth]);
 
   const addToast = useCallback(
     (message: string, tone: Toast["tone"] = "info") => {
@@ -408,7 +390,7 @@ export function useCodexController() {
             includeHidden: false,
           }),
           window.codexDesktop.request<AccountReadResponse>("account/read", {
-            refreshToken: false,
+            refreshToken: true,
           }),
         ]);
       preferencesRef.current = savedPreferences;
@@ -416,6 +398,8 @@ export function useCodexController() {
       setThreads(threadResponse.data);
       setThreadsNextCursor(threadResponse.nextCursor);
       setModels(modelResponse.data);
+      accountRef.current = accountResponse.account;
+      requiresAuthRef.current = accountResponse.requiresOpenaiAuth;
       setAccount(accountResponse.account);
       setRequiresAuth(accountResponse.requiresOpenaiAuth);
       const selectedModel =
@@ -447,6 +431,48 @@ export function useCodexController() {
       bootstrapping.current = false;
     }
   }, [addToast, updatePreferences]);
+
+  const startLogin = useCallback(async () => {
+    if (authLoginPending) {
+      if (authLoginUrlRef.current) {
+        await window.codexDesktop
+          .openExternal(authLoginUrlRef.current)
+          .catch((error: unknown) =>
+            addToast(
+              `Could not open sign in: ${messageForError(error)}`,
+              "danger",
+            ),
+          );
+      }
+      return;
+    }
+    setAuthLoginPending(true);
+    try {
+      const response =
+        await window.codexDesktop.request<AccountLoginStartResponse>(
+          "account/login/start",
+          {
+            appBrand: "codex",
+            type: "chatgpt",
+            useHostedLoginSuccessPage: true,
+          },
+        );
+      if (
+        response.type !== "chatgpt" ||
+        typeof response.loginId !== "string" ||
+        typeof response.authUrl !== "string"
+      ) {
+        throw new TypeError("account/login/start returned an invalid response");
+      }
+      authLoginUrlRef.current = response.authUrl;
+      await window.codexDesktop.openExternal(response.authUrl);
+      addToast("Finish signing in in your browser");
+    } catch (error) {
+      authLoginUrlRef.current = null;
+      setAuthLoginPending(false);
+      addToast(`Could not start sign in: ${messageForError(error)}`, "danger");
+    }
+  }, [addToast, authLoginPending]);
 
   const applyNotification = useCallback(
     (method: string, params: JsonObject) => {
@@ -568,6 +594,10 @@ export function useCodexController() {
           addToast(messageForError(error), "danger");
           return;
         }
+        if (threadId === activeThreadRef.current?.id) {
+          setDiff("");
+          setPlan([]);
+        }
         setActiveThread((thread) =>
           thread?.id === threadId
             ? {
@@ -624,136 +654,26 @@ export function useCodexController() {
         return;
       }
 
-      if (method === "item/agentMessage/delta" && threadId && turnId) {
-        const itemId = stringParam(params, "itemId");
-        const delta = stringParam(params, "delta");
-        if (!itemId || delta === null) {
-          return;
-        }
-        setActiveThread((thread) => {
-          if (thread?.id !== threadId) {
-            return thread;
-          }
-          return updateTurnItem(thread, turnId, (items) => {
-            const index = items.findIndex((item) => item.id === itemId);
-            const next = [...items];
-            if (index >= 0) {
-              const current = next[index];
-              if (current?.type === "agentMessage") {
-                next[index] = { ...current, text: `${current.text}${delta}` };
-              }
-            } else {
-              next.push({
-                type: "agentMessage",
-                id: itemId,
-                text: delta,
-                phase: null,
-                memoryCitation: null,
-              });
-            }
-            return next;
-          });
-        });
-        return;
-      }
-
-      if (
-        (method === "item/reasoning/summaryTextDelta" ||
-          method === "item/reasoning/textDelta") &&
-        threadId &&
-        turnId
-      ) {
-        const itemId = stringParam(params, "itemId");
-        const delta = stringParam(params, "delta");
-        if (!itemId || delta === null) {
-          return;
-        }
-        const summary = method.includes("summary");
-        setActiveThread((thread) => {
-          if (thread?.id !== threadId) {
-            return thread;
-          }
-          return updateTurnItem(thread, turnId, (items) => {
-            const index = items.findIndex((item) => item.id === itemId);
-            const next = [...items];
-            if (index >= 0) {
-              const current = next[index];
-              if (current?.type === "reasoning") {
-                const field = summary
-                  ? [...current.summary]
-                  : [...current.content];
-                const partIndex = Number(
-                  params[summary ? "summaryIndex" : "contentIndex"] ?? 0,
-                );
-                field[partIndex] = `${field[partIndex] ?? ""}${delta}`;
-                next[index] = summary
-                  ? { ...current, summary: field }
-                  : { ...current, content: field };
-              }
-            } else {
-              next.push({
-                type: "reasoning",
-                id: itemId,
-                summary: summary ? [delta] : [],
-                content: summary ? [] : [delta],
-              });
-            }
-            return next;
-          });
-        });
-        return;
-      }
-
-      if (
-        method === "item/commandExecution/outputDelta" &&
-        threadId &&
-        turnId
-      ) {
-        const itemId = stringParam(params, "itemId");
-        const delta = stringParam(params, "delta");
-        if (!itemId || delta === null) {
-          return;
-        }
+      if (isTurnStreamDeltaMethod(method) && threadId && turnId) {
         setActiveThread((thread) =>
           thread?.id === threadId
-            ? updateTurnItem(thread, turnId, (items) =>
-                items.map((item) =>
-                  item.id === itemId && item.type === "commandExecution"
-                    ? {
-                        ...item,
-                        aggregatedOutput: `${item.aggregatedOutput ?? ""}${delta}`,
-                      }
-                    : item,
-                ),
-              )
+            ? applyTurnStreamDelta(thread, turnId, method, params)
             : thread,
         );
         return;
       }
 
-      if (
-        method === "item/fileChange/patchUpdated" &&
-        threadId &&
-        turnId &&
-        Array.isArray(params.changes)
-      ) {
+      if (method === "item/mcpToolCall/progress" && threadId && turnId) {
         const itemId = stringParam(params, "itemId");
-        if (!itemId) return;
-        const changes = params.changes as unknown as Extract<
-          ThreadItem,
-          { type: "fileChange" }
-        >["changes"];
-        setActiveThread((thread) =>
-          thread?.id === threadId
-            ? updateTurnItem(thread, turnId, (items) =>
-                items.map((item) =>
-                  item.id === itemId && item.type === "fileChange"
-                    ? { ...item, changes }
-                    : item,
-                ),
-              )
-            : thread,
-        );
+        const message = stringParam(params, "message");
+        if (!itemId || message === null) return;
+        setItemProgress((current) => {
+          const entries = Object.entries(current).slice(-99);
+          return {
+            ...Object.fromEntries(entries),
+            [itemId]: [...(current[itemId] ?? []), message].slice(-20),
+          };
+        });
         return;
       }
 
@@ -800,8 +720,10 @@ export function useCodexController() {
 
       if (method === "account/updated") {
         void window.codexDesktop
-          .request<AccountReadResponse>("account/read", { refreshToken: false })
+          .request<AccountReadResponse>("account/read", { refreshToken: true })
           .then((response) => {
+            accountRef.current = response.account;
+            requiresAuthRef.current = response.requiresOpenaiAuth;
             setAccount(response.account);
             setRequiresAuth(response.requiresOpenaiAuth);
           })
@@ -811,6 +733,36 @@ export function useCodexController() {
               "danger",
             ),
           );
+        return;
+      }
+
+      if (method === "account/login/completed") {
+        authLoginUrlRef.current = null;
+        setAuthLoginPending(false);
+        if (params.success === true) {
+          void window.codexDesktop
+            .request<AccountReadResponse>("account/read", {
+              refreshToken: true,
+            })
+            .then((response) => {
+              accountRef.current = response.account;
+              requiresAuthRef.current = response.requiresOpenaiAuth;
+              setAccount(response.account);
+              setRequiresAuth(response.requiresOpenaiAuth);
+              addToast("Signed in to Codex", "success");
+            })
+            .catch((error: unknown) =>
+              addToast(
+                `Could not refresh account: ${messageForError(error)}`,
+                "danger",
+              ),
+            );
+        } else {
+          addToast(
+            stringParam(params, "error") ?? "Codex sign in was not completed",
+            "danger",
+          );
+        }
         return;
       }
 
@@ -835,7 +787,23 @@ export function useCodexController() {
           stringParam(params, "summary") ??
           (nestedError ? stringParam(nestedError, "message") : null) ??
           "Codex reported an issue";
-        addToast(message, method === "error" ? "danger" : "info");
+        const authenticationFailure =
+          method === "error" &&
+          /(?:401 Unauthorized|Missing bearer or basic authentication)/i.test(
+            message,
+          );
+        if (authenticationFailure) {
+          accountRef.current = null;
+          requiresAuthRef.current = true;
+          setAccount(null);
+          setRequiresAuth(true);
+          addToast(
+            "Your Codex sign-in is missing or expired. Sign in again.",
+            "danger",
+          );
+        } else {
+          addToast(message, method === "error" ? "danger" : "info");
+        }
         return;
       }
 
@@ -1046,37 +1014,67 @@ export function useCodexController() {
   );
 
   const startPreparedPrompt = useCallback(
-    async (thread: Thread, prepared: PreparedPrompt) => {
-      try {
-        const currentPreferences = preferencesRef.current;
-        const response = await window.codexDesktop.request("turn/start", {
+    (thread: Thread, prepared: PreparedPrompt) => {
+      const optimisticTurn = createOptimisticTurn(prepared.input);
+      const currentThread = activeThreadRef.current;
+      const optimisticThread = {
+        ...(currentThread?.id === thread.id ? currentThread : thread),
+        status: { activeFlags: [], type: "active" } as Thread["status"],
+        turns: mergeTurns(
+          currentThread?.id === thread.id ? currentThread.turns : thread.turns,
+          optimisticTurn,
+        ),
+      };
+      activeThreadRef.current = optimisticThread;
+      setActiveThread(optimisticThread);
+      setDiff("");
+      setPlan([]);
+      setView("thread");
+
+      const currentPreferences = preferencesRef.current;
+      void window.codexDesktop
+        .request("turn/start", {
           effort: currentPreferences.selectedEffort,
           input: prepared.input,
           model: currentPreferences.selectedModel,
           threadId: thread.id,
+        })
+        .then((response) => {
+          const turn = requireTurn(
+            isObject(response) ? response.turn : undefined,
+            "turn/start",
+          );
+          const active = activeThreadRef.current;
+          if (active?.id === thread.id) {
+            activeThreadRef.current = {
+              ...active,
+              turns: mergeTurns(active.turns, turn),
+            };
+          }
+          setActiveThread((current) =>
+            current?.id === thread.id
+              ? { ...current, turns: mergeTurns(current.turns, turn) }
+              : current,
+          );
+        })
+        .catch((error: unknown) => {
+          const message = messageForError(error);
+          const active = activeThreadRef.current;
+          if (active?.id === thread.id) {
+            activeThreadRef.current = failOptimisticTurn(
+              active,
+              optimisticTurn.id,
+              message,
+            );
+          }
+          setActiveThread((current) =>
+            current?.id === thread.id
+              ? failOptimisticTurn(current, optimisticTurn.id, message)
+              : current,
+          );
+          addToast(`Could not send prompt: ${message}`, "danger");
         });
-        const turn = requireTurn(
-          isObject(response) ? response.turn : undefined,
-          "turn/start",
-        );
-        const currentThread = activeThreadRef.current;
-        if (currentThread?.id === thread.id) {
-          activeThreadRef.current = {
-            ...currentThread,
-            turns: mergeTurns(currentThread.turns, turn),
-          };
-        }
-        setActiveThread((current) =>
-          current?.id === thread.id
-            ? { ...current, turns: mergeTurns(current.turns, turn) }
-            : current,
-        );
-        setView("thread");
-        return true;
-      } catch (error) {
-        addToast(`Could not send prompt: ${messageForError(error)}`, "danger");
-        return false;
-      }
+      return true;
     },
     [addToast],
   );
@@ -1085,6 +1083,10 @@ export function useCodexController() {
     async (submission: PromptSubmission) => {
       const prepared = preparePromptSubmission(submission);
       if (!validatePreparedPrompt(prepared)) return false;
+      if (requiresAuthRef.current && !accountRef.current) {
+        void startLogin();
+        return false;
+      }
       try {
         let thread = activeThreadRef.current;
         if (!thread) {
@@ -1130,6 +1132,7 @@ export function useCodexController() {
       addToast,
       chooseWorkspace,
       enqueuePrompt,
+      startLogin,
       startPreparedPrompt,
       validatePreparedPrompt,
     ],
@@ -1390,15 +1393,12 @@ export function useCodexController() {
     const prepared = preparePromptSubmission(nextPrompt.submission);
     if (!validatePreparedPrompt(prepared)) return;
     drainingPromptRef.current = nextPrompt.id;
-    void startPreparedPrompt(thread, prepared)
-      .then((started) => {
-        if (started) removePrompt(thread.id, nextPrompt.id);
-      })
-      .finally(() => {
-        if (drainingPromptRef.current === nextPrompt.id) {
-          drainingPromptRef.current = null;
-        }
-      });
+    if (startPreparedPrompt(thread, prepared)) {
+      removePrompt(thread.id, nextPrompt.id);
+    }
+    if (drainingPromptRef.current === nextPrompt.id) {
+      drainingPromptRef.current = null;
+    }
   }, [
     activeThread,
     activeTurn,
@@ -1421,11 +1421,13 @@ export function useCodexController() {
     activeTurn,
     addToast,
     archiveThread,
+    authLoginPending,
     bootstrapped,
     chooseWorkspace,
     diff,
     dismissToast,
     interrupt,
+    itemProgress,
     items,
     loadingThread,
     loadOlderTurns,
@@ -1447,6 +1449,7 @@ export function useCodexController() {
     serverRequests,
     setView,
     startReview,
+    startLogin,
     steerQueuedPrompt,
     submitPrompt,
     threads,

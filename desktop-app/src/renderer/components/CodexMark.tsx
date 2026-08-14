@@ -4,28 +4,22 @@ export function CodexMark({ size = 22 }: { size?: number }) {
       aria-hidden="true"
       className="codex-mark"
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 1024 1024"
       width={size}
     >
-      <defs>
-        <linearGradient id="codex-gradient" x1="3" x2="28" y1="4" y2="27">
-          <stop stopColor="#f3f1ea" />
-          <stop offset="1" stopColor="#999d96" />
-        </linearGradient>
-      </defs>
       <path
-        d="M16 2.8a7.2 7.2 0 0 1 6.62 4.36 7.2 7.2 0 0 1 5.24 10.84 7.2 7.2 0 0 1-8.02 9.4 7.2 7.2 0 0 1-11.48-3.48A7.2 7.2 0 0 1 5.1 12.56 7.2 7.2 0 0 1 16 2.8Z"
+        d="M512 188c102 0 190 64 224 155 101 12 180 98 180 203 0 72-38 136-95 172-5 112-97 202-211 202-62 0-118-27-157-69-101 26-208-26-250-125-25-59-20-123 8-175-36-95 4-206 98-254 65-33 140-28 198 7 2-64 4-101 5-116Z"
         fill="none"
-        stroke="url(#codex-gradient)"
+        stroke="currentColor"
         strokeLinejoin="round"
-        strokeWidth="2.2"
+        strokeWidth="64"
       />
       <path
-        d="m10.3 12.7 5.7-3.3 5.7 3.3v6.6L16 22.6l-5.7-3.3v-6.6Z"
+        d="m347 416 165-95 165 95v191L512 702l-165-95V416Z"
         fill="none"
-        stroke="url(#codex-gradient)"
+        stroke="currentColor"
         strokeLinejoin="round"
-        strokeWidth="1.8"
+        strokeWidth="55"
       />
     </svg>
   );

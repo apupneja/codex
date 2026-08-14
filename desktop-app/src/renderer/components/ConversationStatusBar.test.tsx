@@ -5,8 +5,9 @@ import { ConversationStatusBar } from "./ConversationStatusBar";
 
 describe("ConversationStatusBar", () => {
   it("exposes the complete branch, environment, and context labels", () => {
-    render(
+    const { container, rerender } = render(
       <ConversationStatusBar
+        active={false}
         branchLabel="apupneja/ui-live-arenas-title"
         deviceLabel="This Mac"
         tokenPercent={16}
@@ -24,5 +25,17 @@ describe("ConversationStatusBar", () => {
     expect(screen.getByLabelText("Context 16%")).toHaveStyle(
       "background: conic-gradient(var(--addition) 16%, var(--border-strong) 0)",
     );
+
+    rerender(
+      <ConversationStatusBar
+        active
+        branchLabel="apupneja/ui-live-arenas-title"
+        deviceLabel="This Mac"
+        tokenPercent={16}
+      />,
+    );
+
+    expect(screen.getByLabelText("Agent working. Context 16%")).toBeVisible();
+    expect(container.querySelector(".context-ring-spinner")).toBeVisible();
   });
 });

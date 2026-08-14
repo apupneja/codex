@@ -18,7 +18,15 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { CodexController } from "../state/useCodexController";
-import { MenuSurface, useDismissibleLayer } from "../design-system";
+import {
+  MenuItem,
+  MenuLabel,
+  MenuSeparator,
+  MenuSurface,
+  useDismissibleLayer,
+} from "../design-system";
+import { CodexMark } from "./CodexMark";
+import { AuthenticationNotice } from "./AuthenticationNotice";
 import { Composer } from "./Composer";
 
 type NewTaskViewProps = {
@@ -173,6 +181,9 @@ export function NewTaskView({
         </div>
       </header>
       <div className="new-task-center">
+        <div className="hero-mark">
+          <CodexMark size={48} />
+        </div>
         <div className="new-task-context" ref={contextRef}>
           <div className="new-task-context-item">
             <button
@@ -332,23 +343,27 @@ export function NewTaskView({
             </button>
             {contextOpen === "device" ? (
               <MenuSurface className="new-task-context-menu device-context-menu">
-                <strong>Run on</strong>
-                <button onClick={() => setContextOpen(null)}>
-                  <Cloud size={12} /> Cloud
-                </button>
-                <button onClick={() => setContextOpen(null)}>
-                  <Laptop size={12} /> This Mac
+                <MenuLabel>Run on</MenuLabel>
+                <MenuItem onClick={() => setContextOpen(null)}>
+                  <Cloud size={12} />
+                  <span>Cloud</span>
+                </MenuItem>
+                <MenuItem onClick={() => setContextOpen(null)}>
+                  <Laptop size={12} />
+                  <span>This Mac</span>
                   <Check className="context-menu-trailing" size={12} />
-                </button>
-                <button
+                </MenuItem>
+                <MenuItem
                   onClick={() =>
                     controller.addToast("Remote machines are not connected.")
                   }
                 >
-                  <Monitor size={12} /> Remote Machines
+                  <Monitor size={12} />
+                  <span>Remote Machines</span>
                   <ChevronRight className="context-menu-trailing" size={12} />
-                </button>
-                <button
+                </MenuItem>
+                <MenuSeparator />
+                <MenuItem
                   className="context-menu-new-worktree"
                   onClick={() =>
                     controller.addToast(
@@ -356,15 +371,26 @@ export function NewTaskView({
                     )
                   }
                 >
-                  <Plus size={12} /> New Worktree
-                </button>
+                  <Plus size={12} />
+                  <span>New Worktree</span>
+                </MenuItem>
               </MenuSurface>
             ) : null}
           </div>
         </div>
+        {controller.requiresAuth && !controller.account ? (
+          <AuthenticationNotice
+            onSignIn={() => void controller.startLogin()}
+            pending={controller.authLoginPending}
+          />
+        ) : null}
         <Composer
           active={false}
-          disabled={controller.runtime.phase !== "ready"}
+          disabled={
+            controller.runtime.phase !== "ready" ||
+            !controller.bootstrapped ||
+            (controller.requiresAuth && !controller.account)
+          }
           models={controller.models}
           onInterrupt={controller.interrupt}
           onSubmit={controller.submitPrompt}

@@ -40,6 +40,11 @@ const api: DesktopApi = {
     ipcRenderer.invoke("workspace:chooseFiles") as Promise<string[]>,
   chooseWorkspace: () =>
     ipcRenderer.invoke("workspace:choose") as Promise<string | null>,
+  confirmDiscardChanges: (path: string) =>
+    ipcRenderer.invoke(
+      "workspace:confirmDiscardChanges",
+      path,
+    ) as Promise<boolean>,
   ensureEmbeddedBrowser: (initialUrl?: string) =>
     ipcRenderer.invoke(
       "embeddedBrowser:ensure",

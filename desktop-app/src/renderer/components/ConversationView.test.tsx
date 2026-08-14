@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ThreadItem } from "../../shared/types";
-import { ToolItem } from "./ConversationView";
 import { ConversationTurnStatus } from "./ConversationTurnStatus";
+import { ToolItem } from "./ToolItem";
 import { UserMessage } from "./UserMessage";
 
 const onOpenChange = vi.fn();
@@ -43,6 +43,28 @@ describe("ToolItem", () => {
     fireEvent.click(disclosure);
     expect(disclosure).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("Planning the change.")).not.toBeInTheDocument();
+  });
+
+  it("does not render an empty reasoning lifecycle item", () => {
+    render(
+      <ToolItem
+        cwd="/workspace"
+        item={
+          {
+            type: "reasoning",
+            id: "reasoning-empty",
+            summary: ["  "],
+            content: [],
+          } as ThreadItem
+        }
+        onOpenChange={onOpenChange}
+        onOpenFile={onOpenFile}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Thought briefly" }),
+    ).not.toBeInTheDocument();
   });
 
   it("collapses only the selected reasoning trace", () => {
@@ -159,6 +181,36 @@ describe("ToolItem", () => {
     expect(onOpenChange).toHaveBeenCalledWith("src/App.tsx");
     expect(onOpenFile).not.toHaveBeenCalled();
   });
+
+  it("shows streamed MCP progress while a tool call is active", () => {
+    render(
+      <ToolItem
+        cwd="/workspace"
+        item={
+          {
+            appContext: null,
+            arguments: { query: "Codex" },
+            durationMs: null,
+            error: null,
+            id: "mcp-1",
+            pluginId: null,
+            readOnlyHint: true,
+            result: null,
+            server: "search",
+            status: "inProgress",
+            tool: "query",
+            type: "mcpToolCall",
+          } as ThreadItem
+        }
+        onOpenChange={onOpenChange}
+        onOpenFile={onOpenFile}
+        progressMessages={["Searching", "Ranking results"]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Calling/ }));
+    expect(screen.getByText(/Ranking results/)).toBeVisible();
+  });
 });
 
 describe("ConversationTurnStatus", () => {
@@ -184,6 +236,62 @@ describe("ConversationTurnStatus", () => {
           items: [
             userMessage,
             {
+              aggregatedOutput: null,
+              command: "pnpm test",
+              commandActions: [],
+              cwd: "/workspace",
+              durationMs: null,
+              exitCode: null,
+              id: "command-1",
+              pluginId: null,
+              processId: "process-1",
+              scriptPath: null,
+              source: "agent",
+              status: "inProgress",
+              type: "commandExecution",
+            } as ThreadItem,
+          ],
+          status: "inProgress",
+        }}
+      >
+        <div>Live command trace</div>
+      </ConversationTurnStatus>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Running pnpm test/ }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Live command trace")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Running pnpm test/ }));
+    expect(screen.getByText("Live command trace")).toBeVisible();
+
+    rerender(
+      <ConversationTurnStatus
+        turn={{
+          durationMs: null,
+          items: [
+            userMessage,
+            {
+              type: "reasoning",
+              id: "reasoning-empty",
+              summary: [],
+              content: [],
+            } as ThreadItem,
+          ],
+          status: "inProgress",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Planning next moves");
+
+    rerender(
+      <ConversationTurnStatus
+        turn={{
+          durationMs: null,
+          items: [
+            userMessage,
+            {
               type: "agentMessage",
               id: "answer-1",
               phase: "final_answer",
@@ -195,7 +303,7 @@ describe("ConversationTurnStatus", () => {
       />,
     );
 
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Writing response");
 
     rerender(
       <ConversationTurnStatus
@@ -204,6 +312,13 @@ describe("ConversationTurnStatus", () => {
     );
 
     expect(screen.getByText("Worked for 2s")).toBeVisible();
+
+    rerender(
+      <ConversationTurnStatus
+        turn={{ durationMs: 2_400, items: [userMessage], status: "failed" }}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Failed after 2s");
   });
 });
 

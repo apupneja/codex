@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ConversationComposerDock > keeps Changes without showing a Commit & Push action 1`] = `
+<div
+  class="change-actions"
+>
+  <button>
+    Changes
+  </button>
+</div>
+`;

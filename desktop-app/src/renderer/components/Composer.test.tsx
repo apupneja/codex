@@ -108,15 +108,15 @@ describe("Composer", () => {
       />,
     );
 
-    expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent(
-      "GPT Test Minimal",
+    expect(screen.getByRole("button", { name: "Model" })).toHaveTextContent(
+      "GPT TestMinimal",
     );
     expect(
-      screen.queryByRole("combobox", { name: "Reasoning effort" }),
+      screen.queryByRole("button", { name: "Reasoning effort" }),
     ).not.toBeInTheDocument();
   });
 
-  it("updates model and reasoning from the combined selector", () => {
+  it("updates model and reasoning from the configuration menu", () => {
     const updatePreferences = vi.fn().mockResolvedValue(preferences);
     render(
       <Composer
@@ -130,12 +130,43 @@ describe("Composer", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Model" }));
-    fireEvent.click(screen.getByRole("option", { name: /GPT Test Fast/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Model" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Effort/ }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Fast/ }));
 
     expect(updatePreferences).toHaveBeenCalledWith({
       selectedEffort: "low",
       selectedModel: "gpt-test",
+    });
+  });
+
+  it("switches models from the model submenu", () => {
+    const updatePreferences = vi.fn().mockResolvedValue(preferences);
+    const secondModel = {
+      ...model,
+      displayName: "GPT Other",
+      id: "gpt-other",
+      isDefault: false,
+    } as Model;
+    render(
+      <Composer
+        active={false}
+        models={[model, secondModel]}
+        onInterrupt={() => undefined}
+        onSubmit={() => undefined}
+        onToast={() => undefined}
+        preferences={preferences}
+        updatePreferences={updatePreferences}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Model" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Model GPT Test/ }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "GPT Other" }));
+
+    expect(updatePreferences).toHaveBeenCalledWith({
+      selectedEffort: "high",
+      selectedModel: "gpt-other",
     });
   });
 
@@ -161,8 +192,8 @@ describe("Composer", () => {
     expect(
       screen.getByRole("button", { name: "Start voice input" }),
     ).toBeVisible();
-    expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent(
-      "GPT Test Deep",
+    expect(screen.getByRole("button", { name: "Model" })).toHaveTextContent(
+      "GPT TestHigh",
     );
 
     fireEvent.change(input, { target: { value: "Ship the UI" } });
@@ -200,7 +231,7 @@ describe("Composer", () => {
         "multiline",
       ),
     );
-    expect(screen.getAllByRole("combobox")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Model" })).toHaveLength(1);
   });
 
   it("moves compact controls before paint when the composer becomes narrow", async () => {
@@ -359,10 +390,49 @@ describe("Composer", () => {
       screen.getByRole("button", { name: "Add agents, context, tools" }),
     );
     expect(
-      screen.getByRole("listbox", { name: "Add agents, context, tools" }),
+      screen.getByRole("menu", { name: "Add agents, context, tools" }),
     ).toBeVisible();
-    expect(screen.getByRole("option", { name: /Plan/ })).toBeVisible();
-    expect(screen.getByRole("option", { name: "File" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /Plan/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: "File" })).toBeVisible();
+  });
+
+  it("keeps the tools and model menus mutually exclusive", () => {
+    render(
+      <Composer
+        active={false}
+        models={[model]}
+        onInterrupt={() => undefined}
+        onSubmit={() => undefined}
+        onToast={() => undefined}
+        preferences={preferences}
+        updatePreferences={async () => preferences}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add agents, context, tools" }),
+    );
+    expect(
+      screen.getByRole("menu", { name: "Add agents, context, tools" }),
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Model" }));
+    expect(
+      screen.getByRole("menu", { name: "Model configuration" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("menu", { name: "Add agents, context, tools" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add agents, context, tools" }),
+    );
+    expect(
+      screen.getByRole("menu", { name: "Add agents, context, tools" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("menu", { name: "Model configuration" }),
+    ).not.toBeInTheDocument();
   });
 
   it("queues a follow-up while preserving the active Stop control", async () => {
@@ -384,7 +454,7 @@ describe("Composer", () => {
     expect(
       screen.getByRole("button", { name: "Stop generation" }),
     ).toBeVisible();
-    expect(screen.getByRole("combobox", { name: "Model" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Model" })).toBeDisabled();
 
     fireEvent.change(input, { target: { value: "Run this after the task" } });
     expect(

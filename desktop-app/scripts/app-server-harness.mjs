@@ -332,3 +332,91 @@ export function streamingResponse(responseId, itemId, parts) {
     },
   ];
 }
+
+export function planUpdateResponse(responseId, callId, plan) {
+  return [
+    { type: "response.created", response: { id: responseId } },
+    {
+      type: "response.output_item.done",
+      item: {
+        arguments: JSON.stringify({ plan }),
+        call_id: callId,
+        name: "update_plan",
+        type: "function_call",
+      },
+    },
+    {
+      type: "response.completed",
+      response: {
+        id: responseId,
+        usage: {
+          input_tokens: 0,
+          input_tokens_details: null,
+          output_tokens: 0,
+          output_tokens_details: null,
+          total_tokens: 0,
+        },
+      },
+    },
+  ];
+}
+
+export function applyPatchResponse(responseId, callId, patch) {
+  return [
+    { type: "response.created", response: { id: responseId } },
+    {
+      type: "response.output_item.done",
+      item: {
+        call_id: callId,
+        input: patch,
+        name: "apply_patch",
+        type: "custom_tool_call",
+      },
+    },
+    {
+      type: "response.completed",
+      response: {
+        id: responseId,
+        usage: {
+          input_tokens: 0,
+          input_tokens_details: null,
+          output_tokens: 0,
+          output_tokens_details: null,
+          total_tokens: 0,
+        },
+      },
+    },
+  ];
+}
+
+export function shellCommandResponse(responseId, callId, command) {
+  return [
+    { type: "response.created", response: { id: responseId } },
+    {
+      type: "response.output_item.done",
+      item: {
+        arguments: JSON.stringify({
+          command,
+          timeout_ms: 10_000,
+          workdir: null,
+        }),
+        call_id: callId,
+        name: "shell_command",
+        type: "function_call",
+      },
+    },
+    {
+      type: "response.completed",
+      response: {
+        id: responseId,
+        usage: {
+          input_tokens: 0,
+          input_tokens_details: null,
+          output_tokens: 0,
+          output_tokens_details: null,
+          total_tokens: 0,
+        },
+      },
+    },
+  ];
+}

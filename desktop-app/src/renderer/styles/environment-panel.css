@@ -1,0 +1,283 @@
+/* Task environment side panel */
+
+.environment-panel {
+  animation: backdropIn var(--motion-overlay) both;
+  background: var(--elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-dialog);
+  box-shadow: var(--shadow);
+  color: var(--text-bright);
+  container-name: environment-panel;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--workbench-header-height) - var(--space-12));
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-8) var(--space-8);
+  scrollbar-color: var(--border-strong) transparent;
+  z-index: 70;
+}
+
+.environment-panel-docked {
+  align-self: start;
+  grid-column: 2;
+  grid-row: 1;
+  margin: var(--space-6) 0;
+  max-height: calc(100% - var(--space-12));
+  min-width: 320px;
+  position: relative;
+  width: 100%;
+}
+
+.environment-panel-drawer {
+  border-radius: var(--radius-dialog) 0 0 var(--radius-dialog);
+  max-height: calc(100% - var(--space-12));
+  min-width: min(320px, calc(100% - var(--space-12)));
+  position: absolute;
+  right: 0;
+  top: var(--space-6);
+  width: min(360px, calc(100% - var(--space-12)));
+  z-index: 72;
+}
+
+.environment-panel-scrim {
+  background: var(--scrim);
+  border-radius: 0;
+  inset: 0;
+  position: absolute;
+  z-index: 71;
+}
+
+.environment-panel-header,
+.environment-panel-header-actions,
+.environment-panel-section-header {
+  align-items: center;
+  display: flex;
+}
+
+.environment-panel-header {
+  height: var(--control-height-lg);
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.environment-panel-header h2,
+.environment-panel-section h3 {
+  color: var(--muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-regular);
+  margin: 0;
+}
+
+.environment-panel-header-actions {
+  gap: var(--space-1);
+  position: relative;
+}
+
+.environment-panel-icon {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  display: flex;
+  height: var(--control-height-md);
+  justify-content: center;
+  padding: 0;
+  width: var(--control-height-md);
+}
+
+.environment-panel-icon:hover {
+  background: var(--overlay-hover);
+  color: var(--text-bright);
+}
+
+.environment-panel-menu {
+  min-width: 164px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 120;
+}
+
+.environment-panel-actions,
+.environment-source-list {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.environment-panel-row {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-control);
+  color: var(--text-bright);
+  display: grid;
+  font-size: var(--font-size-label);
+  gap: var(--space-4);
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  min-height: 34px;
+  padding: 0 var(--space-1);
+  text-align: left;
+  width: 100%;
+}
+
+.environment-panel-row:hover {
+  background: var(--overlay-hover);
+}
+
+.environment-panel-row > svg {
+  color: var(--text-dim);
+}
+
+.environment-panel-row > svg:last-child:not(:first-child) {
+  color: var(--muted);
+}
+
+.environment-panel-row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.environment-change-counts {
+  display: flex;
+  font-variant-numeric: tabular-nums;
+  gap: var(--space-3);
+}
+
+.environment-change-counts b {
+  font-weight: var(--font-weight-medium);
+}
+
+.environment-change-counts .addition {
+  color: var(--addition);
+}
+
+.environment-change-counts .deletion {
+  color: var(--deletion);
+}
+
+.environment-panel-row-value {
+  color: var(--muted);
+}
+
+.environment-panel-section {
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-5);
+  padding-top: var(--space-8);
+}
+
+.environment-panel-section > h3,
+.environment-panel-section-header {
+  margin-bottom: var(--space-4);
+}
+
+.environment-panel-section-header {
+  justify-content: space-between;
+}
+
+.environment-source-row {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-control);
+  color: var(--text-dim);
+  display: grid;
+  font-size: var(--font-size-body);
+  gap: var(--space-4);
+  grid-template-columns: var(--control-height-md) minmax(0, 1fr);
+  min-height: var(--control-height-lg);
+  padding: var(--space-1);
+  text-align: left;
+  width: 100%;
+}
+
+button.environment-source-row:hover {
+  background: var(--overlay-hover);
+  color: var(--text-bright);
+}
+
+.environment-source-row > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.environment-source-icon {
+  align-items: center;
+  background: var(--overlay-faint);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: flex;
+  height: var(--control-height-md);
+  justify-content: center;
+  width: var(--control-height-md);
+}
+
+.environment-source-empty {
+  color: var(--muted);
+  font-size: var(--font-size-body);
+  margin: var(--space-2) 0;
+}
+
+.environment-sources-more {
+  align-items: center;
+  background: transparent;
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  display: flex;
+  font-size: var(--font-size-body);
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-2);
+}
+
+.environment-sources-more:hover {
+  background: var(--overlay-hover);
+  color: var(--text-bright);
+}
+
+@container environment-panel (max-width: 240px) {
+  .environment-panel-header h2,
+  .environment-panel-section h3,
+  .environment-panel-row {
+    font-size: var(--font-size-body);
+  }
+
+  .environment-panel-header-actions
+    > .environment-panel-icon[aria-label="Open terminal"] {
+    display: none;
+  }
+
+  .environment-panel-row {
+    align-items: start;
+    gap: var(--space-3);
+    grid-template-columns: 16px minmax(0, 1fr);
+    padding-block: var(--space-2);
+  }
+
+  .environment-panel-row > svg:last-child:not(:first-child) {
+    display: none;
+  }
+
+  .environment-change-counts,
+  .environment-panel-row-value {
+    font-size: var(--font-size-meta);
+    grid-column: 2;
+  }
+
+  .environment-panel-section {
+    margin-top: var(--space-4);
+    padding-top: var(--space-6);
+  }
+
+  .environment-source-row {
+    gap: var(--space-3);
+    grid-template-columns: var(--control-height-sm) minmax(0, 1fr);
+  }
+
+  .environment-source-icon {
+    height: var(--control-height-sm);
+    width: var(--control-height-sm);
+  }
+}

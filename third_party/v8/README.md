@@ -6,8 +6,18 @@ Bazel consumer builds use:
 - upstream `denoland/rusty_v8` release archives on Windows MSVC
 - source-built V8 archives on Darwin, GNU Linux, musl Linux, and Windows GNU
 
-Local Cargo builds still use upstream prebuilt `rusty_v8` archives by default.
-Selected Cargo CI, release, and package builds override
+Plain Cargo builds still use upstream prebuilt `rusty_v8` archives by default.
+That does not work for the sandbox-enabled Darwin and Linux targets whose
+archives are published by Codex instead of upstream. For local development,
+use the repository wrapper, which downloads and verifies the matching Codex
+artifact pair before invoking Cargo:
+
+```bash
+just build --bin redapto --bin codex-code-mode-host
+```
+
+The wrapper also powers the `just codex`, `just exec`, and `just code-mode-host`
+recipes. Selected Cargo CI, release, and package builds override
 `RUSTY_V8_ARCHIVE`/`RUSTY_V8_SRC_BINDING_PATH` with Codex release assets. Bazel
 sets those variables independently in `MODULE.bazel` to select source-built
 local archives and bindings for its consumer builds.
