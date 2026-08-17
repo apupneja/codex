@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "OpenAI Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/OpenAISans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "OpenAI Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../assets/OpenAISans-Medium.woff2") format("woff2");
+}
+
 * {
   box-sizing: border-box;
 }
@@ -5,28 +21,26 @@
 html,
 body,
 #root {
+  width: 100%;
   height: 100%;
   margin: 0;
   overflow: hidden;
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: var(--surface-main);
+  color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: var(--font-size-body);
-  -webkit-font-smoothing: antialiased;
-  user-select: none;
+  font-size: var(--font-size-label);
+  font-weight: 445;
+  -webkit-font-smoothing: inherit;
 }
 
 button,
 input,
-select,
 textarea {
   color: inherit;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: var(--font-weight-ui);
+  font: inherit;
 }
 
 button {
@@ -34,42 +48,99 @@ button {
 }
 
 button,
-select,
-[role="button"],
-[role="combobox"],
-[role="option"] {
+[role="button"] {
+  -webkit-app-region: no-drag;
+}
+
+button:not(:disabled) {
   cursor: default;
 }
 
-:where(button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
-}
-
-:where(button, input, select, textarea):disabled {
+button:disabled {
   cursor: not-allowed;
-  opacity: 0.48;
+  opacity: 0.45;
 }
 
-button:hover:not(:disabled),
-[role="button"]:hover:not([aria-disabled="true"]) {
-  transition:
-    background-color var(--transition-control),
-    border-color var(--transition-control),
-    color var(--transition-control);
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
-kbd {
-  color: var(--muted);
-  font-family: var(--font-ui);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
+::selection {
+  background: var(--text-primary);
+  color: var(--surface-main);
 }
 
-code,
-pre,
-kbd[data-monospace="true"] {
-  font-family: var(--font-mono);
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-round);
+  background: var(--scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+@property --left-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --right-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0;
+}
+
+.horizontal-scroll-fade-mask {
+  -webkit-mask: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--left-fade) calc(100% - var(--right-fade)),
+    transparent
+  );
+  mask: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--left-fade) calc(100% - var(--right-fade)),
+    transparent
+  );
+  animation-name: horizontal-scroll-edge-fade;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-timeline: scroll(self x);
+}
+
+@keyframes horizontal-scroll-edge-fade {
+  0% {
+    --left-fade: 0;
+    --right-fade: var(--edge-fade-distance, 1rem);
+  }
+
+  0.1%,
+  99.9% {
+    --left-fade: var(--edge-fade-distance, 1rem);
+    --right-fade: var(--edge-fade-distance, 1rem);
+  }
+
+  100% {
+    --left-fade: var(--edge-fade-distance, 1rem);
+    --right-fade: 0;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -77,8 +148,6 @@ kbd[data-monospace="true"] {
   *::before,
   *::after {
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
   }
 }

@@ -5,10 +5,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
-    coverage: {
-      reporter: ["text", "html"],
-    },
+    environmentOptions: { jsdom: { url: "http://localhost/" } },
+    setupFiles: ["src/test/setup.ts"],
+    css: true,
   },
 });

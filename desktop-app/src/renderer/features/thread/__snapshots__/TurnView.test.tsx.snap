@@ -1,0 +1,727 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`matches the shipped activity, work-status, and Markdown table anatomy 1`] = `
+<section
+  class="turn turn-view"
+  data-turn-status="completed"
+>
+  <div
+    class="user-message-group"
+  >
+    <div
+      class="user-message"
+    >
+      <div
+        class="user-message__bubble"
+        tabindex="0"
+      >
+        <div
+          class="user-message-content"
+        >
+          <div
+            class="user-message-text is-collapsed"
+          >
+            <p>
+              Documents and knowledge bases need to be first-class citizens.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="user-message-actions"
+    >
+      <button
+        aria-label="Copy message"
+        class="message-copy"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="lucide lucide-copy"
+          fill="none"
+          height="24"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect
+            height="14"
+            rx="2"
+            ry="2"
+            width="14"
+            x="8"
+            y="8"
+          />
+          <path
+            d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+          />
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div
+    class="agent-message-group is-commentary"
+  >
+    <article
+      aria-busy="false"
+      aria-live="polite"
+      class="agent-message assistant-message"
+    >
+      <p
+        dir="auto"
+      >
+        That changes the ranking. I’m checking which projects treat ingestion, retrieval, citations, connectors, and permissions as core features.
+      </p>
+    </article>
+  </div>
+  <div
+    class="activity-group"
+  >
+    <button
+      aria-expanded="false"
+      class="activity-group__trigger"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-search"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle
+          cx="11"
+          cy="11"
+          r="8"
+        />
+        <path
+          d="m21 21-4.3-4.3"
+        />
+      </svg>
+      <span>
+        Searched the web
+      </span>
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-chevron-down activity-group__chevron"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="m6 9 6 6 6-6"
+        />
+      </svg>
+    </button>
+  </div>
+  <div
+    aria-live="polite"
+    class="work-status-divider"
+  >
+    <span>
+      Worked for 57s
+    </span>
+  </div>
+  <div
+    class="agent-message-group"
+  >
+    <article
+      aria-busy="false"
+      aria-live="polite"
+      class="agent-message assistant-message"
+    >
+      <p
+        dir="auto"
+      >
+        Then I’d change the recommendation:
+      </p>
+      
+
+      <div
+        class="markdown-table-container"
+        data-markdown-table="true"
+        data-wide-block=""
+        tabindex="-1"
+      >
+        <div
+          class="markdown-table-scroller horizontal-scroll-fade-mask"
+        >
+          <div
+            class="markdown-table-wrapper"
+          >
+            <table
+              class="markdown-table"
+              dir="auto"
+            >
+              <thead>
+                <tr
+                  class="markdown-table-row"
+                >
+                  <th
+                    class="markdown-table-header-cell has-single-child"
+                    dir="auto"
+                  >
+                    Rank
+                  </th>
+                  <th
+                    class="markdown-table-header-cell has-single-child"
+                    dir="auto"
+                  >
+                    Project
+                  </th>
+                  <th
+                    class="markdown-table-header-cell has-single-child"
+                    dir="auto"
+                  >
+                    Best fit
+                  </th>
+                </tr>
+              </thead>
+              <tbody
+                class="markdown-table-body"
+              >
+                <tr
+                  class="markdown-table-row"
+                >
+                  <td
+                    class="markdown-table-cell is-numeric has-single-child"
+                    dir="auto"
+                  >
+                    1
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    <a
+                      href="https://anythingllm.com/"
+                    >
+                      AnythingLLM
+                    </a>
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    Best overall for chatting with private documents
+                  </td>
+                </tr>
+                <tr
+                  class="markdown-table-row"
+                >
+                  <td
+                    class="markdown-table-cell is-numeric has-single-child"
+                    dir="auto"
+                  >
+                    2
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    <a
+                      href="https://onyx.app/"
+                    >
+                      Onyx
+                    </a>
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    Best for an organization-wide knowledge base
+                  </td>
+                </tr>
+                <tr
+                  class="markdown-table-row"
+                >
+                  <td
+                    class="markdown-table-cell is-numeric has-single-child"
+                    dir="auto"
+                  >
+                    3
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    <a
+                      href="https://ragflow.io/"
+                    >
+                      RAGFlow
+                    </a>
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    Best for complex PDFs, scans, tables, slides, and citations
+                  </td>
+                </tr>
+                <tr
+                  class="markdown-table-row"
+                >
+                  <td
+                    class="markdown-table-cell is-numeric has-single-child"
+                    dir="auto"
+                  >
+                    4
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    <a
+                      href="https://dify.ai/"
+                    >
+                      Dify
+                    </a>
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    Best for custom apps and workflows around a knowledge base
+                  </td>
+                </tr>
+                <tr
+                  class="markdown-table-row"
+                >
+                  <td
+                    class="markdown-table-cell is-numeric has-single-child"
+                    dir="auto"
+                  >
+                    5
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    <a
+                      href="https://openwebui.com/"
+                    >
+                      Open WebUI
+                    </a>
+                  </td>
+                  <td
+                    class="markdown-table-cell has-single-child"
+                    dir="auto"
+                  >
+                    Good general chat UI, but documents are less central
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div
+          class="markdown-table-actions"
+          data-markdown-copy="exclude"
+        >
+          <div>
+            <button
+              aria-expanded="false"
+              aria-haspopup="dialog"
+              aria-label="Expand table"
+              title="Expand table"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                fill="none"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M4.335 11A.665.665 0 1 1 5.665 11v3.335H9a.665.665 0 1 1 0 1.33H5A.665.665 0 0 1 4.335 15v-4Zm10-2V5.665H11a.665.665 0 1 1 0-1.33h4c.367 0 .665.298.665.665v4a.665.665 0 1 1-1.33 0Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+            <button
+              aria-label="Copy table"
+              title="Copy table"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-check"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M20 6 9 17l-5-5"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+
+      <p
+        dir="auto"
+      >
+        My default choice would be 
+        <strong>
+          AnythingLLM
+        </strong>
+        . 
+      </p>
+    </article>
+    <div
+      class="agent-message-actions"
+    >
+      <button
+        aria-label="Copy"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          fill="none"
+          viewBox="0 0 21 21"
+        >
+          <path
+            d="M13.468 11.122c0-.711 0-1.205-.031-1.588-.023-.282-.061-.472-.113-.616l-.055-.129a2.003 2.003 0 0 0-.676-.732l-.127-.071c-.158-.081-.37-.137-.745-.168-.384-.031-.877-.031-1.588-.031H7.3c-.711 0-1.204 0-1.588.031-.282.023-.471.061-.615.112l-.13.056a2.003 2.003 0 0 0-.731.676l-.071.127c-.08.158-.137.369-.168.745-.031.383-.032.876-.032 1.588v2.833c0 .711.001 1.204.032 1.587.031.376.088.588.168.746l.071.126c.176.287.429.522.731.676l.13.056c.144.052.333.089.615.112.384.031.877.032 1.588.032h2.833c.711 0 1.204-.001 1.588-.032.375-.031.587-.088.745-.168l.127-.071c.287-.176.522-.429.676-.731l.055-.13c.052-.143.09-.333.113-.615.031-.383.031-.877.031-1.588v-2.833Zm1.33 1.998c.455-.002.803-.005 1.09-.029.375-.03.587-.087.745-.168l.126-.071c.288-.176.522-.429.676-.731l.056-.13c.052-.144.089-.333.112-.615.031-.384.032-.877.032-1.588V6.955c0-.711-.001-1.205-.032-1.588-.023-.282-.06-.472-.112-.615l-.056-.13a2.003 2.003 0 0 0-.676-.732l-.126-.07c-.158-.081-.37-.138-.745-.168-.384-.032-.877-.032-1.588-.032h-2.833c-.711 0-1.204 0-1.588.032-.282.023-.471.06-.615.111l-.13.057a2.003 2.003 0 0 0-.731.676l-.071.126c-.08.158-.137.37-.168.745-.023.287-.027.635-.029 1.09h1.999c.689 0 1.246-.001 1.696.036.458.037.864.117 1.241.309l.218.122c.496.304.9.74 1.165 1.26l.066.143c.145.336.21.697.243 1.098.036.451.036 1.008.036 1.697v1.998Zm4.167-3.332c0 .689.001 1.246-.036 1.696-.033.401-.098.762-.242 1.099l-.067.142a3.668 3.668 0 0 1-1.165 1.261l-.218.122c-.377.192-.783.271-1.241.309-.337.027-.734.031-1.201.033-.002.467-.006.864-.033 1.201-.033.401-.098.761-.242 1.098l-.067.142a3.67 3.67 0 0 1-1.165 1.262l-.218.122c-.377.192-.783.271-1.241.309-.45.036-1.007.036-1.696.036H7.3c-.689 0-1.246 0-1.696-.036-.401-.033-.762-.098-1.098-.242l-.143-.067a3.67 3.67 0 0 1-1.261-1.165l-.122-.219c-.192-.376-.271-.782-.309-1.24-.037-.451-.036-1.008-.036-1.697v-2.833c0-.689-.001-1.246.036-1.696.038-.458.117-.865.309-1.241l.122-.218a3.67 3.67 0 0 1 1.261-1.165l.143-.066c.336-.145.697-.21 1.098-.243.337-.027.733-.032 1.2-.034.002-.466.007-.863.034-1.2.038-.458.117-.864.309-1.241l.122-.219a3.67 3.67 0 0 1 1.261-1.165l.143-.066c.336-.145.697-.21 1.098-.243.45-.036 1.007-.036 1.696-.036H14.3c.689 0 1.246 0 1.696.036.458.038.864.117 1.241.309l.218.122c.496.304.9.74 1.165 1.261l.067.143c.144.336.209.697.242 1.098.037.45.036 1.007.036 1.696v2.833Z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+      <button
+        aria-label="Continue in new chat from here"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            d="M15.8 11.535c.367 0 .665.298.665.665v5a.665.665 0 0 1-.665.665h-5a.665.665 0 1 1 0-1.33h3.394l-3.565-3.564a.666.666 0 0 1 .942-.942l3.564 3.565V12.2c0-.367.298-.665.665-.665Zm0-9.4c.367 0 .665.298.665.665v5a.665.665 0 0 1-1.33 0V4.405l-5.128 5.128c-.323.324-.558.565-.842.74a2.668 2.668 0 0 1-.771.319c-.324.078-.662.073-1.12.073H1.93a.665.665 0 1 1 0-1.33h5.345c.52 0 .673-.005.809-.037.136-.033.266-.086.385-.16.12-.072.23-.177.598-.545l5.128-5.128H10.8a.665.665 0 0 1 0-1.33h5Z"
+          />
+        </svg>
+      </button>
+    </div>
+  </div>
+</section>
+`;
+
+exports[`matches the shipped main-chat message hierarchy 1`] = `
+<section
+  class="turn turn-view"
+  data-turn-status="completed"
+>
+  <div
+    class="user-message-group"
+  >
+    <div
+      class="user-message"
+    >
+      <div
+        class="user-message__bubble"
+        tabindex="0"
+      >
+        <div
+          class="user-message-content"
+        >
+          <div
+            class="user-message-text is-collapsed"
+          >
+            <p>
+              <a
+                href="https://www.linkedin.com/in/example/"
+              >
+                LinkedIn
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="user-message-actions"
+    >
+      <button
+        aria-label="Copy message"
+        class="message-copy"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="lucide lucide-copy"
+          fill="none"
+          height="24"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect
+            height="14"
+            rx="2"
+            ry="2"
+            width="14"
+            x="8"
+            y="8"
+          />
+          <path
+            d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+          />
+        </svg>
+      </button>
+      <button
+        aria-label="Edit message"
+        class="message-copy"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="lucide lucide-pencil"
+          fill="none"
+          height="24"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
+          />
+          <path
+            d="m15 5 4 4"
+          />
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div
+    class="agent-message-group is-commentary"
+  >
+    <article
+      aria-busy="false"
+      aria-live="polite"
+      class="agent-message assistant-message"
+    >
+      <p
+        dir="auto"
+      >
+        I’ll review the profile and corroborate it with public sources.
+      </p>
+    </article>
+  </div>
+  <div
+    class="activity-group"
+  >
+    <button
+      aria-expanded="false"
+      class="activity-group__trigger"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-wrench"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
+        />
+      </svg>
+      <span>
+        Used node_repl integration and searched the web
+      </span>
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-chevron-down activity-group__chevron"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="m6 9 6 6 6-6"
+        />
+      </svg>
+    </button>
+  </div>
+  <div
+    class="agent-message-group is-commentary"
+  >
+    <article
+      aria-busy="false"
+      aria-live="polite"
+      class="agent-message assistant-message"
+    >
+      <p
+        dir="auto"
+      >
+        The profile points to two consistent tracks.
+      </p>
+    </article>
+  </div>
+  <div
+    class="agent-message-group"
+  >
+    <article
+      aria-busy="false"
+      aria-live="polite"
+      class="agent-message assistant-message"
+    >
+      <p
+        dir="auto"
+      >
+        The work spans 
+        <strong>
+          AI and scientific innovation
+        </strong>
+        .
+      </p>
+      
+
+      <ul
+        dir="auto"
+      >
+        
+
+        <li>
+          <strong>
+            Scientific R&D:
+          </strong>
+           Reworked research workflows.
+        </li>
+        
+
+        <li>
+          <strong>
+            Enterprise AI:
+          </strong>
+           Expanded practical adoption.
+        </li>
+        
+
+      </ul>
+    </article>
+    <div
+      class="agent-message-actions"
+    >
+      <button
+        aria-label="Copy"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          fill="none"
+          viewBox="0 0 21 21"
+        >
+          <path
+            d="M13.468 11.122c0-.711 0-1.205-.031-1.588-.023-.282-.061-.472-.113-.616l-.055-.129a2.003 2.003 0 0 0-.676-.732l-.127-.071c-.158-.081-.37-.137-.745-.168-.384-.031-.877-.031-1.588-.031H7.3c-.711 0-1.204 0-1.588.031-.282.023-.471.061-.615.112l-.13.056a2.003 2.003 0 0 0-.731.676l-.071.127c-.08.158-.137.369-.168.745-.031.383-.032.876-.032 1.588v2.833c0 .711.001 1.204.032 1.587.031.376.088.588.168.746l.071.126c.176.287.429.522.731.676l.13.056c.144.052.333.089.615.112.384.031.877.032 1.588.032h2.833c.711 0 1.204-.001 1.588-.032.375-.031.587-.088.745-.168l.127-.071c.287-.176.522-.429.676-.731l.055-.13c.052-.143.09-.333.113-.615.031-.383.031-.877.031-1.588v-2.833Zm1.33 1.998c.455-.002.803-.005 1.09-.029.375-.03.587-.087.745-.168l.126-.071c.288-.176.522-.429.676-.731l.056-.13c.052-.144.089-.333.112-.615.031-.384.032-.877.032-1.588V6.955c0-.711-.001-1.205-.032-1.588-.023-.282-.06-.472-.112-.615l-.056-.13a2.003 2.003 0 0 0-.676-.732l-.126-.07c-.158-.081-.37-.138-.745-.168-.384-.032-.877-.032-1.588-.032h-2.833c-.711 0-1.204 0-1.588.032-.282.023-.471.06-.615.111l-.13.057a2.003 2.003 0 0 0-.731.676l-.071.126c-.08.158-.137.37-.168.745-.023.287-.027.635-.029 1.09h1.999c.689 0 1.246-.001 1.696.036.458.037.864.117 1.241.309l.218.122c.496.304.9.74 1.165 1.26l.066.143c.145.336.21.697.243 1.098.036.451.036 1.008.036 1.697v1.998Zm4.167-3.332c0 .689.001 1.246-.036 1.696-.033.401-.098.762-.242 1.099l-.067.142a3.668 3.668 0 0 1-1.165 1.261l-.218.122c-.377.192-.783.271-1.241.309-.337.027-.734.031-1.201.033-.002.467-.006.864-.033 1.201-.033.401-.098.761-.242 1.098l-.067.142a3.67 3.67 0 0 1-1.165 1.262l-.218.122c-.377.192-.783.271-1.241.309-.45.036-1.007.036-1.696.036H7.3c-.689 0-1.246 0-1.696-.036-.401-.033-.762-.098-1.098-.242l-.143-.067a3.67 3.67 0 0 1-1.261-1.165l-.122-.219c-.192-.376-.271-.782-.309-1.24-.037-.451-.036-1.008-.036-1.697v-2.833c0-.689-.001-1.246.036-1.696.038-.458.117-.865.309-1.241l.122-.218a3.67 3.67 0 0 1 1.261-1.165l.143-.066c.336-.145.697-.21 1.098-.243.337-.027.733-.032 1.2-.034.002-.466.007-.863.034-1.2.038-.458.117-.864.309-1.241l.122-.219a3.67 3.67 0 0 1 1.261-1.165l.143-.066c.336-.145.697-.21 1.098-.243.45-.036 1.007-.036 1.696-.036H14.3c.689 0 1.246 0 1.696.036.458.038.864.117 1.241.309l.218.122c.496.304.9.74 1.165 1.261l.067.143c.144.336.209.697.242 1.098.037.45.036 1.007.036 1.696v2.833Z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+      <button
+        aria-label="Continue in new chat from here"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            d="M15.8 11.535c.367 0 .665.298.665.665v5a.665.665 0 0 1-.665.665h-5a.665.665 0 1 1 0-1.33h3.394l-3.565-3.564a.666.666 0 0 1 .942-.942l3.564 3.565V12.2c0-.367.298-.665.665-.665Zm0-9.4c.367 0 .665.298.665.665v5a.665.665 0 0 1-1.33 0V4.405l-5.128 5.128c-.323.324-.558.565-.842.74a2.668 2.668 0 0 1-.771.319c-.324.078-.662.073-1.12.073H1.93a.665.665 0 1 1 0-1.33h5.345c.52 0 .673-.005.809-.037.136-.033.266-.086.385-.16.12-.072.23-.177.598-.545l5.128-5.128H10.8a.665.665 0 0 1 0-1.33h5Z"
+          />
+        </svg>
+      </button>
+    </div>
+  </div>
+</section>
+`;
+
+exports[`suppresses unresolved citation markers without touching code 1`] = `
+<section
+  class="turn turn-view"
+  data-turn-status="inProgress"
+>
+  <div
+    class="agent-message-group is-streaming"
+  >
+    <article
+      aria-busy="true"
+      aria-live="polite"
+      class="agent-message assistant-message"
+    >
+      <p
+        dir="auto"
+      >
+        AnythingLLM supports documents, vector search, local/cloud models, and multi-user deployments. It is MIT licensed. 
+      </p>
+      
+
+      <p
+        dir="auto"
+      >
+        Onyx is the stronger enterprise choice. 
+      </p>
+      
+
+      <p
+        dir="auto"
+      >
+        A literal marker remains intact in code: 
+        <code>
+          citeexample
+        </code>
+      </p>
+      
+
+      <p
+        dir="auto"
+      >
+        This streaming suffix stays hidden. 
+      </p>
+    </article>
+  </div>
+</section>
+`;

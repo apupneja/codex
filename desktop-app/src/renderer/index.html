@@ -1,61 +1,16 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark light" />
-    <title>Codex Desktop</title>
-    <style>
-      #bootstrap-fallback[hidden] {
-        display: none;
-      }
-
-      #bootstrap-fallback {
-        align-items: center;
-        background: #111214;
-        color: #e8e8e8;
-        display: flex;
-        font:
-          14px -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          sans-serif;
-        inset: 0;
-        justify-content: center;
-        position: fixed;
-      }
-
-      #bootstrap-fallback > div {
-        max-width: 420px;
-        padding: 32px;
-        text-align: center;
-      }
-
-      #bootstrap-fallback strong {
-        display: block;
-        font-size: 16px;
-        margin-bottom: 8px;
-      }
-
-      #bootstrap-fallback p {
-        color: #a8a8a8;
-        line-height: 1.5;
-        margin: 0;
-      }
-    </style>
-    <script type="module" src="/bootstrap-fallback.ts"></script>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http://127.0.0.1:5178 ws://127.0.0.1:5178"
+    />
+    <title>Codex</title>
   </head>
   <body>
     <div id="root"></div>
-    <div id="bootstrap-fallback" role="alert" hidden>
-      <div>
-        <strong>Codex could not start</strong>
-        <p>
-          Reload the window to reconnect. If this continues, open the developer
-          tools for error details.
-        </p>
-      </div>
-    </div>
     <script type="module" src="/main.tsx"></script>
   </body>
 </html>

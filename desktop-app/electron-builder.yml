@@ -1,62 +1,24 @@
-appId: com.openai.codex.desktop
-productName: Codex Desktop
-protocols:
-  - name: Codex
-    schemes:
-      - codex
+appId: com.openai.chatgpt.cleanroom
+productName: ChatGPT
 asar: true
-electronFuses:
-  runAsNode: false
-  enableCookieEncryption: true
-  enableNodeOptionsEnvironmentVariable: false
-  enableNodeCliInspectArguments: false
-  enableEmbeddedAsarIntegrityValidation: true
-  onlyLoadAppFromAsar: true
-  grantFileProtocolExtraPrivileges: false
 directories:
   output: release
 files:
   - dist/**/*
   - resources/icon.png
   - package.json
-extraResources:
-  - from: resources/codex-package
-    to: codex-package
-    filter:
-      - "**/*"
 mac:
-  artifactName: Codex-Desktop-${version}-${arch}.${ext}
   category: public.app-category.developer-tools
-  extendInfo:
-    NSMicrophoneUsageDescription: Codex Desktop uses the microphone only when you start voice dictation.
-  electronLanguages:
-    - en-US
+  icon: resources/icon.png
   hardenedRuntime: true
-  forceCodeSigning: true
-  notarize: true
   entitlements: resources/entitlements.mac.plist
   entitlementsInherit: resources/entitlements.mac.plist
-  icon: resources/icon.png
-  target:
-    - dmg
-    - zip
+  target: [dmg, zip]
 win:
-  artifactName: Codex-Desktop-${version}-${arch}.${ext}
-  forceCodeSigning: true
   icon: resources/icon.png
-  signExts:
-    - .dll
-    - .exe
-  target:
-    - nsis
+  target: [nsis]
 linux:
-  artifactName: Codex-Desktop-${version}-${arch}.${ext}
   category: Development
   icon: resources/icon.png
-  target:
-    - AppImage
-    - deb
-nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
+  target: [AppImage, deb]
 publish: null

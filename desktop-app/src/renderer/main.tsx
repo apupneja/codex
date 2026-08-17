@@ -1,36 +1,38 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import React from "react";
+import ReactDOM from "react-dom/client";
 
-import App from "./App";
-import { RendererErrorBoundary } from "./components/RendererErrorBoundary";
+import { App } from "./app/App";
 import "./design-system/tokens.css";
 import "./design-system/foundation.css";
-import "./styles/shell-base.css";
-import "./styles/sidebar.css";
-import "./styles/headers.css";
-import "./styles/new-task.css";
-import "./styles/composer.css";
-import "./styles/conversation.css";
-import "./styles/environment-panel.css";
-import "./styles/workspace.css";
-import "./styles/editor.css";
-import "./styles/utility.css";
-import "./styles/overlays.css";
-import "./styles/customize.css";
-import "./styles/settings-shell.css";
-import "./styles/settings-content.css";
 import "./design-system/components.css";
+import "./ui/ui.css";
+import "./shell/shell.css";
+import "./features/composer/composer.css";
+import "./features/home/home.css";
+import "./features/thread/thread.css";
+import "./features/panels/panels.css";
+import "./features/pages/pages.css";
+import "./features/settings/settings.css";
+import "./features/settings/pet-assets.css";
+import "./app/app.css";
 
 const root = document.getElementById("root");
-if (!root) {
-  throw new Error("Missing #root element");
-}
+if (!root) throw new Error("Renderer root not found");
 
-createRoot(root).render(
-  <StrictMode>
-    <RendererErrorBoundary>
+const search = new URLSearchParams(window.location.search);
+const petSurface = search.get("surface") === "pet";
+const pet = /^[a-z0-9-]+$/.test(search.get("pet") ?? "")
+  ? search.get("pet")!
+  : "codex";
+
+ReactDOM.createRoot(root).render(
+  <React.StrictMode>
+    {petSurface ? (
+      <div aria-label={`${pet} pet`} className="pet-overlay-surface">
+        <span className={`pet-overlay-surface__pet pet-avatar--${pet}`} />
+      </div>
+    ) : (
       <App />
-    </RendererErrorBoundary>
-  </StrictMode>,
+    )}
+  </React.StrictMode>,
 );
-document.getElementById("bootstrap-fallback")?.remove();

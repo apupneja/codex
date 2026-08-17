@@ -1,144 +1,183 @@
-import { FileCode2, Link } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { Check, ChevronDown, Copy, Pencil } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-import type { ThreadItem } from "../../shared/types";
-import {
-  extractPromptContext,
-  parseMentionedFilesEnvelope,
-} from "../lib/promptContext";
-import { SubmittedContextBlock } from "./ContextBlock";
-
-function CollapsibleMessageText({ text }: { text: string }) {
-  const elementRef = useRef<HTMLDivElement>(null);
-  const [expanded, setExpanded] = useState(false);
-  const [overflowing, setOverflowing] = useState(false);
-
-  useLayoutEffect(() => {
-    const element = elementRef.current;
-    if (!element || expanded) return;
-    const measure = () => {
-      setOverflowing(element.scrollHeight > element.clientHeight + 1);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [expanded, text]);
-
-  const toggle = () => setExpanded((current) => !current);
-  return (
-    <div
-      ref={elementRef}
-      aria-expanded={overflowing ? expanded : undefined}
-      aria-label={
-        overflowing
-          ? expanded
-            ? "Collapse prompt"
-            : "Show full prompt"
-          : undefined
-      }
-      className={`user-message-text ${expanded ? "is-expanded" : "is-collapsed"} ${overflowing ? "is-overflowing" : ""}`}
-      onClick={() => {
-        const selection = window.getSelection();
-        if (!overflowing || (selection && !selection.isCollapsed)) return;
-        toggle();
-      }}
-      onKeyDown={(event) => {
-        if (!overflowing || (event.key !== "Enter" && event.key !== " ")) {
-          return;
-        }
-        event.preventDefault();
-        toggle();
-      }}
-      role={overflowing ? "button" : undefined}
-      tabIndex={overflowing ? 0 : undefined}
-      title={
-        overflowing
-          ? expanded
-            ? "Collapse prompt"
-            : "Show full prompt"
-          : undefined
-      }
-    >
-      {text}
-    </div>
-  );
-}
+import { openLink } from "../state/link-routing";
 
 export function UserMessage({
-  item,
-  onOpenFile,
+  onEdit,
+  text,
 }: {
-  item: Extract<ThreadItem, { type: "userMessage" }>;
-  onOpenFile(path: string): void;
+  onEdit?(text: string): Promise<void> | void;
+  text: string;
 }) {
-  const extractedText = item.content
-    .filter((entry) => entry.type === "text")
-    .map((entry) =>
-      entry.type === "text"
-        ? extractPromptContext(entry.text, entry.text_elements)
-        : { contexts: [], text: "" },
-    );
-  const envelope = parseMentionedFilesEnvelope(
-    extractedText.map((entry) => entry.text).join("\n"),
-  );
-  const contexts = extractedText.flatMap((entry) => entry.contexts);
-  const attachments = item.content.filter((entry) => entry.type !== "text");
+  const ref = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState(text);
+  const [sendingEdit, setSendingEdit] = useState(false);
+
+  const submitEdit = async () => {
+    const nextText = editDraft.trim();
+    if (!nextText || sendingEdit) return;
+    setSendingEdit(true);
+    try {
+      await onEdit?.(nextText);
+      setEditing(false);
+    } finally {
+      setSendingEdit(false);
+    }
+  };
+
+  useEffect(() => {
+    const element = ref.current;
+    const textElement = textRef.current;
+    if (!element || !textElement) return;
+    const measure = () => {
+      const lineHeight = Number.parseFloat(
+        getComputedStyle(textElement).lineHeight,
+      );
+      setOverflowing(textElement.scrollHeight > lineHeight * 3 + 1);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    observer.observe(textElement);
+    measure();
+    return () => observer.disconnect();
+  }, [text]);
 
   return (
-    <div className="user-message-group">
-      {contexts.length ? (
-        <div className="submitted-context-list">
-          {contexts.map((context, index) => (
-            <SubmittedContextBlock
-              context={context}
-              key={`${context.title}-${index}`}
-            />
-          ))}
-        </div>
-      ) : null}
-      <div className="user-message">
-        {envelope.text ? <CollapsibleMessageText text={envelope.text} /> : null}
-        {attachments.length || envelope.files.length ? (
-          <div className="message-attachments">
-            {attachments.map((entry, index) => {
-              const path =
-                entry.type === "localImage" ||
-                entry.type === "localAudio" ||
-                entry.type === "skill" ||
-                entry.type === "mention"
-                  ? entry.path
-                  : null;
-              const label =
-                entry.type === "skill" || entry.type === "mention"
-                  ? entry.name
-                  : (path?.split(/[\\/]/).pop() ?? entry.type);
-              return path ? (
+    <div
+      className={`user-message-group${editing ? " is-editing" : ""}`}
+      ref={ref}
+    >
+      {editing ? (
+        <form
+          className="user-message-editor"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitEdit();
+          }}
+        >
+          <textarea
+            aria-label="Edit message"
+            autoFocus
+            onChange={(event) => setEditDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setEditing(false);
+            }}
+            placeholder="Edit message"
+            rows={2}
+            value={editDraft}
+          />
+          <div className="user-message-editor__actions">
+            <button
+              disabled={sendingEdit}
+              onClick={() => setEditing(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className="is-primary"
+              disabled={!editDraft.trim() || sendingEdit}
+              type="submit"
+            >
+              {sendingEdit ? "Sending…" : "Send"}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div className="user-message">
+            <div
+              className="user-message__bubble"
+              onDoubleClick={() => {
+                if (onEdit) setEditing(true);
+              }}
+              tabIndex={0}
+            >
+              <div className="user-message-content">
+                <div
+                  className={`user-message-text${
+                    overflowing ? " is-overflowing" : ""
+                  }${!expanded ? " is-collapsed" : ""}`}
+                  ref={textRef}
+                >
+                  <Markdown
+                    components={{
+                      a: ({ children, href }) => (
+                        <a
+                          href={href}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (href) openLink(href);
+                          }}
+                        >
+                          {children}
+                        </a>
+                      ),
+                    }}
+                    remarkPlugins={[remarkGfm]}
+                  >
+                    {text}
+                  </Markdown>
+                </div>
+                {overflowing && !expanded && (
+                  <span aria-hidden="true" className="user-message-ellipsis">
+                    …
+                  </span>
+                )}
+              </div>
+              {overflowing && (
                 <button
-                  key={`${entry.type}-${path}-${index}`}
-                  onClick={() => onOpenFile(path)}
+                  aria-expanded={expanded}
+                  aria-label={expanded ? "Show less" : "Show more"}
+                  className="message-expand"
+                  onClick={() => setExpanded((value) => !value)}
                   type="button"
                 >
-                  <FileCode2 size={12} /> {label}
+                  <span>{expanded ? "Show less" : "Show more"}</span>
+                  <ChevronDown aria-hidden="true" />
                 </button>
+              )}
+            </div>
+          </div>
+          <div className="user-message-actions">
+            <button
+              aria-label="Copy message"
+              className="message-copy"
+              onClick={() => {
+                void navigator.clipboard.writeText(text);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1200);
+              }}
+              type="button"
+            >
+              {copied ? (
+                <Check aria-hidden="true" />
               ) : (
-                <span key={`${entry.type}-${index}`}>
-                  <Link size={12} /> {label}
-                </span>
-              );
-            })}
-            {envelope.files.map((file) => (
+                <Copy aria-hidden="true" />
+              )}
+            </button>
+            {onEdit && (
               <button
-                key={file.path}
-                onClick={() => onOpenFile(file.path)}
+                aria-label="Edit message"
+                className="message-copy"
+                onClick={() => setEditing(true)}
                 type="button"
               >
-                <FileCode2 size={12} /> {file.title}
+                <Pencil aria-hidden="true" />
               </button>
-            ))}
+            )}
           </div>
-        ) : null}
-      </div>
+        </>
+      )}
     </div>
   );
 }
